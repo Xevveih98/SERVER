@@ -14,6 +14,8 @@ public:
     static bool addUser(const QString &login, const QString &password, const QString &email);
     static bool checkUserCredentials(const QString &login, const QString &password);
     static bool changeUserPassword(const QString &email, const QString &newPassword);
+    static bool changeUserEmail(const QString &login, const QString &email);
+    static bool deleteUserByLogin(const QString &login);
 
 private:
     static QString hashPassword(const QString &password);

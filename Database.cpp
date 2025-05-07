@@ -84,6 +84,45 @@ bool Database::changeUserPassword(const QString &email, const QString &newPasswo
     return true;
 }
 
+bool Database::changeUserEmail(const QString &login, const QString &email) {
+
+    QSqlQuery query;
+    query.prepare(R"(UPDATE users SET user_email = :email WHERE user_login = :login)");
+    query.bindValue(":email", email);
+    query.bindValue(":login", login);
+
+    if (!query.exec()) {
+        qCritical() << "Failed to change email for" << login << ":" << query.lastError().text();
+        return false;
+    }
+
+    if (query.numRowsAffected() == 0) {
+        qWarning() << "No user found with login:" << login;
+        return false;
+    }
+
+    qInfo() << "Email updated for user:" << login;
+    return true;
+}
+
+bool Database::deleteUserByLogin(const QString &login)
+{
+    QSqlQuery query;
+
+    // SQL запрос для удаления пользователя по логину
+    QString deleteQuery = QString("DELETE FROM users WHERE user_login = '%1'").arg(login);
+
+    if (!query.exec(deleteQuery)) {
+        qCritical() << "Failed to delete user:" << query.lastError().text();
+        return false;
+    }
+
+    qInfo() << "User with login" << login << "deleted successfully.";
+    return true;
+}
+
+
+
 QString Database::hashPassword(const QString &password) {
     QByteArray hash = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256);  // Хешируем с использованием SHA-256
     return QString(hash.toHex());  // Конвертируем хеш в шестнадцатеричную строку

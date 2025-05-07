@@ -96,3 +96,64 @@ QHttpServerResponse AuthManager::handlePasswordChange(const QHttpServerRequest &
         return QHttpServerResponse("Password change failed", QHttpServerResponse::StatusCode::InternalServerError);
     }
 }
+
+QHttpServerResponse AuthManager::handleEmailChange(const QHttpServerRequest &request)
+{
+    // Попытка разобрать JSON из тела запроса
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(request.body(), &parseError);
+
+    if (parseError.error != QJsonParseError::NoError || !jsonDoc.isObject()) {
+        qWarning() << "Invalid JSON in Email change:" << parseError.errorString();
+        return QHttpServerResponse("Invalid JSON", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    QJsonObject json = jsonDoc.object();
+    QString login = json.value("login").toString();
+    QString email = json.value("email").toString();
+
+    if (email.isEmpty() || login.isEmpty()) {
+        return QHttpServerResponse("Missing field", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    if (Database::changeUserEmail(login, email)) {
+        qInfo() << "Email successfully changed for user:" << login;
+        return QHttpServerResponse("Email changed successfully", QHttpServerResponse::StatusCode::Ok);
+    } else {
+        qWarning() << "Email change failed for user:" << login;
+        return QHttpServerResponse("Email change failed", QHttpServerResponse::StatusCode::InternalServerError);
+    }
+}
+
+QHttpServerResponse AuthManager::handleLoginToDelete(const QHttpServerRequest &request)
+{
+    // Попытка разобрать JSON из тела запроса
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(request.body(), &parseError);
+
+    if (parseError.error != QJsonParseError::NoError || !jsonDoc.isObject()) {
+        qWarning() << "Invalid JSON received in delete user:" << parseError.errorString();
+        return QHttpServerResponse("Invalid JSON", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    QJsonObject json = jsonDoc.object();
+    QString login = json.value("login").toString();
+
+    if (login.isEmpty()) {
+        return QHttpServerResponse("Missing login", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    if (deleteUserFromDatabase(login)) {
+        qInfo() << "User" << login << "deleted successfully.";
+        return QHttpServerResponse("User deleted successfully", QHttpServerResponse::StatusCode::Ok);
+    } else {
+        qWarning() << "Failed to delete user:" << login;
+        return QHttpServerResponse("Failed to delete user", QHttpServerResponse::StatusCode::InternalServerError);
+    }
+}
+
+
+bool AuthManager::deleteUserFromDatabase(const QString &login)
+{
+    return Database::deleteUserByLogin(login);  // Вызов метода в Database
+}

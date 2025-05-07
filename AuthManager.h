@@ -16,6 +16,12 @@ public:
     QHttpServerResponse handleRegister(const QHttpServerRequest &request);
     QHttpServerResponse handleLogin(const QHttpServerRequest &request);
     QHttpServerResponse handlePasswordChange(const QHttpServerRequest &request);
+    QHttpServerResponse handleEmailChange(const QHttpServerRequest &request);
+    QHttpServerResponse handleLoginToDelete(const QHttpServerRequest &request);
+
+private:
+    bool deleteUserFromDatabase(const QString &login);
+
 };
 
 #endif // AUTHMANAGER_H
