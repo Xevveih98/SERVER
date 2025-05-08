@@ -57,6 +57,8 @@ int main(int argc, char** argv)
                  [&authManager](const QHttpServerRequest &request) {
                      return authManager.handleEmailChange(request);
                  });
+
+
     server.route("/savetags", QHttpServerRequest::Method::Post,
                  [&categoriesManager](const QHttpServerRequest &request) {
                      return categoriesManager.handleSaveTags(request);
@@ -69,6 +71,21 @@ int main(int argc, char** argv)
                  [&categoriesManager](const QHttpServerRequest &request) {
                      return categoriesManager.handleDeleteTag(request);
                  });
+
+
+    server.route("/saveactivity", QHttpServerRequest::Method::Post,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return categoriesManager.handleSaveActivity(request);
+                 });
+    server.route("/getuseractivity", QHttpServerRequest::Method::Get,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return categoriesManager.handleGetUserActivity(request);
+                 });
+    server.route("/deleteactivity", QHttpServerRequest::Method::Post,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return categoriesManager.handleDeleteActivity(request);
+                 });
+
 
     startServer(server);
 

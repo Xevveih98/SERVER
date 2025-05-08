@@ -248,3 +248,73 @@ bool Database::deleteTag(const QString &login, const QString &tag)
 
     return true;
 }
+
+bool Database::saveUserActivity(const QString &login, const QString &iconId, const QString &iconLabel)
+{
+    QSqlQuery query;
+    query.prepare(R"(
+        INSERT INTO user_activities (user_login, icon_id, icon_label)
+        VALUES (:login, :icon_id, :icon_label)
+    )");
+    query.bindValue(":login", login);
+    query.bindValue(":icon_id", iconId.toInt()); // Преобразуем в int, если iconId — строка
+    query.bindValue(":icon_label", iconLabel);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to save user activity:" << query.lastError().text();
+        return false;
+    }
+
+    return true;
+}
+
+QList<QPair<QString, QString>> Database::getUserActivities(const QString &login)
+{
+    QList<QPair<QString, QString>> activities;
+
+    QSqlQuery query;
+    query.prepare(R"(
+        SELECT icon_id, icon_label
+        FROM user_activities
+        WHERE user_login = :login
+        ORDER BY id DESC
+    )");
+    query.bindValue(":login", login);
+
+    if (query.exec()) {
+        while (query.next()) {
+            QString iconId = query.value("icon_id").toString();
+            QString iconLabel = query.value("icon_label").toString();
+            activities.append(qMakePair(iconId, iconLabel));
+        }
+    } else {
+        qWarning() << "Failed to get user activities:" << query.lastError().text();
+    }
+
+    return activities;
+}
+
+
+bool Database::deleteActivity(const QString &login, const QString &activity)
+{
+    QSqlQuery query;
+    query.prepare(R"(
+        DELETE FROM user_activities
+        WHERE user_login = :login AND icon_label = :activity
+    )");
+    query.bindValue(":login", login);
+    query.bindValue(":activity", activity);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to delete activity:" << query.lastError().text();
+        return false;
+    }
+
+    // Проверим, удалилось ли что-то
+    if (query.numRowsAffected() == 0) {
+        qWarning() << "No activity found to delete for user" << login << "and activity" << activity;
+        return false;
+    }
+
+    return true;
+}

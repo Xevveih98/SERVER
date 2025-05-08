@@ -20,6 +20,10 @@ public:
     QHttpServerResponse handleGetUserTags(const QHttpServerRequest &request);
     QHttpServerResponse handleDeleteTag(const QHttpServerRequest &request);
 
+    QHttpServerResponse handleSaveActivity(const QHttpServerRequest &request);
+    QHttpServerResponse handleGetUserActivity(const QHttpServerRequest &request);
+    QHttpServerResponse handleDeleteActivity(const QHttpServerRequest &request);
+
 };
 
 #endif // CATEGORIESMANAGER_H

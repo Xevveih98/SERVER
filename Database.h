@@ -21,6 +21,12 @@ public:
     static QStringList getUserTags(const QString &login);
     static bool deleteTag(const QString &login, const QString &tag);
 
+    static bool saveUserActivity(const QString &login, const QString &iconId, const QString &iconlabel);
+    static QList<QPair<QString, QString>> getUserActivities(const QString &login);
+    static bool deleteActivity(const QString &login, const QString &activity);
+
+
+
 private:
     static QString hashPassword(const QString &password);
 
