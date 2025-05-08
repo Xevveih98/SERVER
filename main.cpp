@@ -1,6 +1,7 @@
 #include "main.h"
 #include "database.h"
 #include "AuthManager.h"
+#include "CategoriesManager.h"
 
 
 void startServer(QHttpServer &server)
@@ -34,9 +35,7 @@ int main(int argc, char** argv)
 
     QHttpServer server;
     AuthManager authManager;
-
-
-
+    CategoriesManager categoriesManager;
 
     server.route("/register", QHttpServerRequest::Method::Post,
                  [&authManager](const QHttpServerRequest &request) {
@@ -58,7 +57,18 @@ int main(int argc, char** argv)
                  [&authManager](const QHttpServerRequest &request) {
                      return authManager.handleEmailChange(request);
                  });
-
+    server.route("/savetags", QHttpServerRequest::Method::Post,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return categoriesManager.handleSaveTags(request);
+                 });
+    server.route("/getusertags", QHttpServerRequest::Method::Get,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return categoriesManager.handleGetUserTags(request);
+                 });
+    server.route("/deletetag", QHttpServerRequest::Method::Post,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return categoriesManager.handleDeleteTag(request);
+                 });
 
     startServer(server);
 

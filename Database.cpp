@@ -127,3 +127,124 @@ QString Database::hashPassword(const QString &password) {
     QByteArray hash = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256);  // Хешируем с использованием SHA-256
     return QString(hash.toHex());  // Конвертируем хеш в шестнадцатеричную строку
 }
+
+bool Database::saveUserTags(const QString &login, const QStringList &tags)
+{
+    QSqlQuery query;
+    // Получаем user_id
+    query.prepare(R"(SELECT id FROM users WHERE user_login = :login)");
+    query.bindValue(":login", login);
+    if (!query.exec() || !query.next()) {
+        qCritical() << "User not found for login:" << login;
+        return false;
+    }
+
+    int userId = query.value(0).toInt();  // переместили вверх
+
+    QSqlQuery deleteQuery;
+    deleteQuery.prepare(R"(DELETE FROM user_tags WHERE user_id = :user_id)");
+    deleteQuery.bindValue(":user_id", userId);
+    if (!deleteQuery.exec()) {
+        qWarning() << "Failed to delete old user_tags:" << deleteQuery.lastError().text();
+        return false;
+    }
+
+    for (const QString &tag : tags) {
+        int tagId = -1;
+
+        // Проверка: есть ли уже такой тег
+        QSqlQuery tagQuery;
+        tagQuery.prepare(R"(SELECT id FROM tags WHERE name = :tag)");
+        tagQuery.bindValue(":tag", tag);
+        if (tagQuery.exec() && tagQuery.next()) {
+            tagId = tagQuery.value(0).toInt();
+        } else {
+            // Вставляем новый тег
+            QSqlQuery insertTag;
+            insertTag.prepare(R"(INSERT INTO tags (name) VALUES (:tag) RETURNING id)");
+            insertTag.bindValue(":tag", tag);
+            if (!insertTag.exec() || !insertTag.next()) {
+                qWarning() << "Failed to insert tag:" << tag;
+                continue;
+            }
+            tagId = insertTag.value(0).toInt();
+        }
+
+        // Связываем user_id и tag_id
+        QSqlQuery linkQuery;
+        linkQuery.prepare(R"(INSERT INTO user_tags (user_id, tag_id)
+                             VALUES (:user_id, :tag_id)
+                             ON CONFLICT DO NOTHING)");
+        linkQuery.bindValue(":user_id", userId);
+        linkQuery.bindValue(":tag_id", tagId);
+        if (!linkQuery.exec()) {
+            qWarning() << "Failed to link user and tag:" << linkQuery.lastError().text();
+        }
+    }
+
+    return true;
+}
+
+QStringList Database::getUserTags(const QString &login)
+{
+    QStringList tags;
+
+    QSqlQuery query;
+    query.prepare(R"(
+        SELECT t.name FROM tags t
+        JOIN user_tags ut ON ut.tag_id = t.id
+        JOIN users u ON u.id = ut.user_id
+        WHERE u.user_login = :login
+    )");
+    query.bindValue(":login", login);
+
+    if (query.exec()) {
+        while (query.next())
+            tags << query.value(0).toString();
+    } else {
+        qWarning() << "Failed to fetch tags for user" << login << ":" << query.lastError().text();
+    }
+
+    return tags;
+}
+
+bool Database::deleteTag(const QString &login, const QString &tag)
+{
+    // Получаем user_id
+    QSqlQuery query;
+    query.prepare(R"(
+        SELECT id FROM users WHERE user_login = :login
+    )");
+    query.bindValue(":login", login);
+    if (!query.exec() || !query.next()) {
+        qCritical() << "User not found for login:" << login;
+        return false;
+    }
+
+    int userId = query.value(0).toInt();
+
+    // Получаем tag_id
+    query.prepare(R"(
+        SELECT id FROM tags WHERE name = :tag
+    )");
+    query.bindValue(":tag", tag);
+    if (!query.exec() || !query.next()) {
+        qWarning() << "Tag not found:" << tag;
+        return false;
+    }
+
+    int tagId = query.value(0).toInt();
+
+    // Удаляем тег для данного пользователя
+    query.prepare(R"(
+        DELETE FROM user_tags WHERE user_id = :user_id AND tag_id = :tag_id
+    )");
+    query.bindValue(":user_id", userId);
+    query.bindValue(":tag_id", tagId);
+    if (!query.exec()) {
+        qWarning() << "Failed to delete tag for user:" << query.lastError().text();
+        return false;
+    }
+
+    return true;
+}

@@ -17,6 +17,10 @@ public:
     static bool changeUserEmail(const QString &login, const QString &email);
     static bool deleteUserByLogin(const QString &login);
 
+    static bool saveUserTags(const QString &login, const QStringList &tags);
+    static QStringList getUserTags(const QString &login);
+    static bool deleteTag(const QString &login, const QString &tag);
+
 private:
     static QString hashPassword(const QString &password);
 
