@@ -24,6 +24,10 @@ public:
     QHttpServerResponse handleGetUserActivity(const QHttpServerRequest &request);
     QHttpServerResponse handleDeleteActivity(const QHttpServerRequest &request);
 
+    QHttpServerResponse handleSaveEmotion(const QHttpServerRequest &request);
+    QHttpServerResponse handleGetUserEmotions(const QHttpServerRequest &request);
+    QHttpServerResponse handleDeleteEmotion(const QHttpServerRequest &request);
+
 };
 
 #endif // CATEGORIESMANAGER_H

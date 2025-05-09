@@ -91,6 +91,108 @@ QHttpServerResponse CategoriesManager::handleDeleteTag(const QHttpServerRequest 
     }
 }
 
+QHttpServerResponse CategoriesManager::handleSaveEmotion(const QHttpServerRequest &request)
+{
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(request.body(), &parseError);
+
+    if (parseError.error != QJsonParseError::NoError || !jsonDoc.isObject()) {
+        qWarning() << "Invalid JSON in emotion saving:" << parseError.errorString();
+        qWarning() << "Received data:" << QString(request.body());
+        return QHttpServerResponse("Invalid JSON", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    QJsonObject json = jsonDoc.object();
+    QString login = json.value("login").toString();
+    QString iconId = json.value("icon_id").toString();
+    QString iconlabel = json.value("icon_label").toString();
+
+    if (login.isEmpty() || iconId.isEmpty() || iconlabel.isEmpty()) {
+        qWarning() << "Missing fields in request. Login:" << login << "iconId:" << iconId << "iconlabel:" << iconlabel;
+        return QHttpServerResponse("Missing fields", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    if (Database::saveUserEmotion(login, iconId, iconlabel)) {
+        return QHttpServerResponse("Emotion saved successfully", QHttpServerResponse::StatusCode::Ok);
+    } else {
+        return QHttpServerResponse("Failed to save emotion", QHttpServerResponse::StatusCode::InternalServerError);
+    }
+}
+
+
+QHttpServerResponse CategoriesManager::handleGetUserEmotions(const QHttpServerRequest &request)
+{
+    qDebug() << "Received request at /getuseremotions";
+
+    if (request.method() != QHttpServerRequest::Method::Get) {
+        return QHttpServerResponse("Invalid method", QHttpServerResponse::StatusCode::MethodNotAllowed);
+    }
+
+    const QUrlQuery query(request.url());
+    const QString login = query.queryItemValue("login");
+
+    qDebug() << "Extracted login parameter:" << login;
+
+    if (login.isEmpty()) {
+        return QHttpServerResponse("Missing login", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    // Получаем все эмоции пользователя из базы данных
+    QList<QPair<QString, QString>> emotions = Database::getUserEmotions(login);
+    qDebug() << "Emotions fetched from DB:" << emotions;
+
+    if (emotions.isEmpty()) {
+        qWarning() << "No emotion found for login:" << login;
+        return QHttpServerResponse("No emotion found", QHttpServerResponse::StatusCode::NotFound);
+    }
+
+    // Формируем JSON-ответ с массивом "emotions"
+    QJsonObject response;
+    QJsonArray emotionsArray;
+
+    for (const auto &emotion : emotions) {
+        QJsonObject emotionObj;
+        emotionObj["emotion"] = emotion.second;
+        emotionObj["iconId"] = emotion.first;
+
+        emotionsArray.append(emotionObj);
+    }
+
+    qDebug() << "Emotions fetched from DB:" << emotionsArray;
+
+    response["emotions"] = emotionsArray;
+
+    return QHttpServerResponse("application/json", QJsonDocument(response).toJson());
+}
+
+
+
+QHttpServerResponse CategoriesManager::handleDeleteEmotion(const QHttpServerRequest &request)
+{
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(request.body(), &parseError);
+
+    if (parseError.error != QJsonParseError::NoError || !jsonDoc.isObject()) {
+        qWarning() << "Invalid JSON in emotion deletion:" << parseError.errorString();
+        return QHttpServerResponse("Invalid JSON", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    QJsonObject json = jsonDoc.object();
+    QString login = json.value("login").toString();
+    QString emotion = json.value("emotion").toString();
+
+    if (login.isEmpty() || emotion.isEmpty()) {
+        return QHttpServerResponse("Missing fields", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    if (Database::deleteEmotion(login, emotion)) {
+        return QHttpServerResponse("Emotion deleted successfully", QHttpServerResponse::StatusCode::Ok);
+    } else {
+        return QHttpServerResponse("Failed to delete emotion", QHttpServerResponse::StatusCode::InternalServerError);
+    }
+}
+
+
 QHttpServerResponse CategoriesManager::handleSaveActivity(const QHttpServerRequest &request)
 {
     QJsonParseError parseError;
@@ -191,4 +293,3 @@ QHttpServerResponse CategoriesManager::handleDeleteActivity(const QHttpServerReq
         return QHttpServerResponse("Failed to delete activity", QHttpServerResponse::StatusCode::InternalServerError);
     }
 }
-

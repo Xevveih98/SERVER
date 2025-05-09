@@ -25,7 +25,9 @@ public:
     static QList<QPair<QString, QString>> getUserActivities(const QString &login);
     static bool deleteActivity(const QString &login, const QString &activity);
 
-
+    static bool saveUserEmotion(const QString &login, const QString &iconId, const QString &iconlabel);
+    static QList<QPair<QString, QString>> getUserEmotions(const QString &login);
+    static bool deleteEmotion(const QString &login, const QString &emotion);
 
 private:
     static QString hashPassword(const QString &password);

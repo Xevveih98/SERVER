@@ -86,6 +86,20 @@ int main(int argc, char** argv)
                      return categoriesManager.handleDeleteActivity(request);
                  });
 
+    server.route("/saveemotion", QHttpServerRequest::Method::Post,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return categoriesManager.handleSaveEmotion(request);
+                 });
+    server.route("/getuseremotions", QHttpServerRequest::Method::Get,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return categoriesManager.handleGetUserEmotions(request);
+                 });
+    server.route("/deleteemotion", QHttpServerRequest::Method::Post,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return categoriesManager.handleDeleteEmotion(request);
+                 });
+
+
 
     startServer(server);
 
