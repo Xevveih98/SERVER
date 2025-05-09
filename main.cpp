@@ -3,7 +3,6 @@
 #include "AuthManager.h"
 #include "CategoriesManager.h"
 
-
 void startServer(QHttpServer &server)
 {
     auto tcpserver = std::make_unique<QTcpServer>();

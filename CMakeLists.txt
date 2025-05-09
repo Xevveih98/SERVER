@@ -21,6 +21,10 @@ add_executable(PSQLSERVER
   Database.cpp
   CategoriesManager.h
   CategoriesManager.cpp
+  AuthDatabase.h
+  CategoriesDatabase.h
+  AuthDatabase.cpp
+  CategoriesDatabase.cpp
 )
 target_link_libraries(PSQLSERVER
   Qt6::Core

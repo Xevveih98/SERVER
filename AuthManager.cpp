@@ -1,5 +1,6 @@
 #include "AuthManager.h"
-#include "Database.h"  // Для вызова Database::addUser
+#include "Database.h"
+#include "AuthDatabase.h"
 #include <QDebug>
 
 AuthManager::AuthManager(QObject *parent)
@@ -28,7 +29,7 @@ QHttpServerResponse AuthManager::handleRegister(const QHttpServerRequest &reques
         return QHttpServerResponse("Missing fields", QHttpServerResponder::StatusCode::BadRequest);
     }
 
-    if (Database::addUser(login, password, email)) {
+    if (AuthDatabase::addUser(login, password, email)) {
         return QHttpServerResponse("User registered", QHttpServerResponse::StatusCode::Ok);
     } else {
         return QHttpServerResponse("Database error", QHttpServerResponse::StatusCode::InternalServerError);
@@ -53,7 +54,7 @@ QHttpServerResponse AuthManager::handleLogin(const QHttpServerRequest &request)
         return QHttpServerResponse("Missing login or password", QHttpServerResponder::StatusCode::BadRequest);
     }
 
-    bool success = Database::checkUserCredentials(login, password);
+    bool success = AuthDatabase::checkUserCredentials(login, password);
 
     if (success) {
         qInfo() << "User" << login << "authenticated successfully.";
@@ -88,7 +89,7 @@ QHttpServerResponse AuthManager::handlePasswordChange(const QHttpServerRequest &
         return QHttpServerResponse("Passwords do not match", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    if (Database::changeUserPassword(email, password)) {
+    if (AuthDatabase::changeUserPassword(email, password)) {
         qInfo() << "Password successfully changed for email:" << email;
         return QHttpServerResponse("Password changed successfully", QHttpServerResponse::StatusCode::Ok);
     } else {
@@ -116,7 +117,7 @@ QHttpServerResponse AuthManager::handleEmailChange(const QHttpServerRequest &req
         return QHttpServerResponse("Missing field", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    if (Database::changeUserEmail(login, email)) {
+    if (AuthDatabase::changeUserEmail(login, email)) {
         qInfo() << "Email successfully changed for user:" << login;
         return QHttpServerResponse("Email changed successfully", QHttpServerResponse::StatusCode::Ok);
     } else {
@@ -152,8 +153,7 @@ QHttpServerResponse AuthManager::handleLoginToDelete(const QHttpServerRequest &r
     }
 }
 
-
 bool AuthManager::deleteUserFromDatabase(const QString &login)
 {
-    return Database::deleteUserByLogin(login);  // Вызов метода в Database
+    return AuthDatabase::deleteUserByLogin(login);  // Вызов метода в Database
 }

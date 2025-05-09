@@ -1,5 +1,6 @@
 #include "CategoriesManager.h"
 #include "Database.h"
+#include "CategoriesDatabase.h"
 
 CategoriesManager::CategoriesManager(QObject *parent)
     : QObject(parent)
@@ -31,7 +32,7 @@ QHttpServerResponse CategoriesManager::handleSaveTags(const QHttpServerRequest &
         }
     }
 
-    if (Database::saveUserTags(login, tags)) {
+    if (CategoriesDatabase::saveUserTags(login, tags)) {
         return QHttpServerResponse("Tags saved successfully", QHttpServerResponse::StatusCode::Ok);
     } else {
         return QHttpServerResponse("Failed to save tags", QHttpServerResponse::StatusCode::InternalServerError);
@@ -50,7 +51,7 @@ QHttpServerResponse CategoriesManager::handleGetUserTags(const QHttpServerReques
     }
 
     // Получаем теги пользователя из базы данных
-    QStringList tags = Database::getUserTags(login);
+    QStringList tags = CategoriesDatabase::getUserTags(login);
 
     // Создаем JSON массив с тегами
     QJsonArray tagArray;
@@ -84,7 +85,7 @@ QHttpServerResponse CategoriesManager::handleDeleteTag(const QHttpServerRequest 
         return QHttpServerResponse("Missing fields", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    if (Database::deleteTag(login, tag)) {
+    if (CategoriesDatabase::deleteTag(login, tag)) {
         return QHttpServerResponse("Tag deleted successfully", QHttpServerResponse::StatusCode::Ok);
     } else {
         return QHttpServerResponse("Failed to delete tag", QHttpServerResponse::StatusCode::InternalServerError);
@@ -112,7 +113,7 @@ QHttpServerResponse CategoriesManager::handleSaveEmotion(const QHttpServerReques
         return QHttpServerResponse("Missing fields", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    if (Database::saveUserEmotion(login, iconId, iconlabel)) {
+    if (CategoriesDatabase::saveUserEmotion(login, iconId, iconlabel)) {
         return QHttpServerResponse("Emotion saved successfully", QHttpServerResponse::StatusCode::Ok);
     } else {
         return QHttpServerResponse("Failed to save emotion", QHttpServerResponse::StatusCode::InternalServerError);
@@ -138,7 +139,7 @@ QHttpServerResponse CategoriesManager::handleGetUserEmotions(const QHttpServerRe
     }
 
     // Получаем все эмоции пользователя из базы данных
-    QList<QPair<QString, QString>> emotions = Database::getUserEmotions(login);
+    QList<QPair<QString, QString>> emotions = CategoriesDatabase::getUserEmotions(login);
     qDebug() << "Emotions fetched from DB:" << emotions;
 
     if (emotions.isEmpty()) {
@@ -185,7 +186,7 @@ QHttpServerResponse CategoriesManager::handleDeleteEmotion(const QHttpServerRequ
         return QHttpServerResponse("Missing fields", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    if (Database::deleteEmotion(login, emotion)) {
+    if (CategoriesDatabase::deleteEmotion(login, emotion)) {
         return QHttpServerResponse("Emotion deleted successfully", QHttpServerResponse::StatusCode::Ok);
     } else {
         return QHttpServerResponse("Failed to delete emotion", QHttpServerResponse::StatusCode::InternalServerError);
@@ -214,7 +215,7 @@ QHttpServerResponse CategoriesManager::handleSaveActivity(const QHttpServerReque
         return QHttpServerResponse("Missing fields", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    if (Database::saveUserActivity(login, iconId, iconlabel)) {
+    if (CategoriesDatabase::saveUserActivity(login, iconId, iconlabel)) {
         return QHttpServerResponse("Activity saved successfully", QHttpServerResponse::StatusCode::Ok);
     } else {
         return QHttpServerResponse("Failed to save activity", QHttpServerResponse::StatusCode::InternalServerError);
@@ -239,7 +240,7 @@ QHttpServerResponse CategoriesManager::handleGetUserActivity(const QHttpServerRe
     }
 
     // Получаем все активности пользователя из базы данных
-    QList<QPair<QString, QString>> activities = Database::getUserActivities(login);
+    QList<QPair<QString, QString>> activities = CategoriesDatabase::getUserActivities(login);
     qDebug() << "Activities fetched from DB:" << activities;
 
 
@@ -287,7 +288,7 @@ QHttpServerResponse CategoriesManager::handleDeleteActivity(const QHttpServerReq
         return QHttpServerResponse("Missing fields", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    if (Database::deleteActivity(login, activity)) {
+    if (CategoriesDatabase::deleteActivity(login, activity)) {
         return QHttpServerResponse("Activity deleted successfully", QHttpServerResponse::StatusCode::Ok);
     } else {
         return QHttpServerResponse("Failed to delete activity", QHttpServerResponse::StatusCode::InternalServerError);
