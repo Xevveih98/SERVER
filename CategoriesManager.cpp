@@ -1,5 +1,4 @@
 #include "CategoriesManager.h"
-#include "Database.h"
 #include "CategoriesDatabase.h"
 
 CategoriesManager::CategoriesManager(QObject *parent)

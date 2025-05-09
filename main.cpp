@@ -1,6 +1,7 @@
 #include "main.h"
 #include "database.h"
 #include "AuthManager.h"
+#include "FoldersManager.h"
 #include "CategoriesManager.h"
 
 void startServer(QHttpServer &server)
@@ -34,6 +35,7 @@ int main(int argc, char** argv)
 
     QHttpServer server;
     AuthManager authManager;
+    FoldersManager foldersManager;
     CategoriesManager categoriesManager;
 
     server.route("/register", QHttpServerRequest::Method::Post,
@@ -96,6 +98,19 @@ int main(int argc, char** argv)
     server.route("/deleteemotion", QHttpServerRequest::Method::Post,
                  [&categoriesManager](const QHttpServerRequest &request) {
                      return categoriesManager.handleDeleteEmotion(request);
+                 });
+
+    server.route("/savefolder", QHttpServerRequest::Method::Post,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return foldersManager.handleSaveFolder(request);
+                 });
+    server.route("/getuserfolder", QHttpServerRequest::Method::Get,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return foldersManager.handleGetUserFolder(request);
+                 });
+    server.route("/deletefolder", QHttpServerRequest::Method::Post,
+                 [&categoriesManager](const QHttpServerRequest &request) {
+                     return foldersManager.handleDeleteFolder(request);
                  });
 
 
