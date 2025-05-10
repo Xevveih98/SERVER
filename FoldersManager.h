@@ -19,6 +19,7 @@ public:
     QHttpServerResponse handleSaveFolder(const QHttpServerRequest &request);
     QHttpServerResponse handleGetUserFolders(const QHttpServerRequest &request);
     QHttpServerResponse handleDeleteFolder(const QHttpServerRequest &request);
+    QHttpServerResponse handleFolderChange(const QHttpServerRequest &request);
 };
 
 

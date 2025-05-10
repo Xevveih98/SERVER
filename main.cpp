@@ -112,6 +112,10 @@ int main(int argc, char** argv)
                  [&foldersManager](const QHttpServerRequest &request) {
                      return foldersManager.handleDeleteFolder(request);
                  });
+    server.route("/changefolder", QHttpServerRequest::Method::Post,
+                 [&foldersManager](const QHttpServerRequest &request) {
+                     return foldersManager.handleFolderChange(request);
+                 });
 
     startServer(server);
 

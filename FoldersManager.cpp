@@ -24,13 +24,12 @@ QHttpServerResponse FoldersManager::handleSaveFolder(const QHttpServerRequest &r
     QString login = json.value("login").toString();
     QJsonValue folderValue = json.value("folder");
 
-    // Преобразуем одиночную папку в массив папок, если она есть
     QJsonArray foldersArray;
     if (folderValue.isString()) {
         foldersArray.append(folderValue.toString());
         qDebug() << "Получена одиночная папка, преобразована в массив:" << foldersArray;
     } else {
-        foldersArray = json.value("folders").toArray();  // Получаем массив папок
+        foldersArray = json.value("folders").toArray();
         qDebug() << "Получен массив папок:" << foldersArray;
     }
 
@@ -83,7 +82,6 @@ QHttpServerResponse FoldersManager::handleGetUserFolders(const QHttpServerReques
         return QHttpServerResponse("Missing login", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    // Получаем все активности пользователя из базы данных
     QList<QPair<QString, QString>> folders = FoldersDatabase::getUserFolders(login);
     qDebug() << "Folders fetched from DB:" << folders;
 
@@ -92,7 +90,6 @@ QHttpServerResponse FoldersManager::handleGetUserFolders(const QHttpServerReques
         return QHttpServerResponse("No folder found", QHttpServerResponse::StatusCode::NotFound);
     }
 
-    // Формируем JSON-ответ с массивом "activities"
     QJsonObject response;
     QJsonArray foldersArray;
 
@@ -124,15 +121,50 @@ QHttpServerResponse FoldersManager::handleDeleteFolder(const QHttpServerRequest 
 
     QJsonObject json = jsonDoc.object();
     QString login = json.value("login").toString();
-    QString folder = json.value("folder").toString();  // Изменил на "folder" вместо "tag"
+    QString folder = json.value("folder").toString();
 
     if (login.isEmpty() || folder.isEmpty()) {
         return QHttpServerResponse("Missing fields", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    if (FoldersDatabase::deleteFolder(login, folder)) {  // Теперь удаляем папку
+    if (FoldersDatabase::deleteFolder(login, folder)) {
         return QHttpServerResponse("Folder deleted successfully", QHttpServerResponse::StatusCode::Ok);
     } else {
         return QHttpServerResponse("Failed to delete folder", QHttpServerResponse::StatusCode::InternalServerError);
+    }
+}
+
+QHttpServerResponse FoldersManager::handleFolderChange(const QHttpServerRequest &request)
+{
+    qDebug() << "Received request at /changefolders";
+
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(request.body(), &parseError);
+
+    qDebug() << "Вот короче" << jsonDoc;
+
+    if (parseError.error != QJsonParseError::NoError || !jsonDoc.isObject()) {
+        qWarning() << "Invalid JSON in folder change:" << parseError.errorString();
+        return QHttpServerResponse("Invalid JSON", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    QJsonObject json = jsonDoc.object();
+    QString login = json.value("login").toString();
+    QString oldName = json.value("oldName").toString();
+    QString newName = json.value("newName").toString();
+
+    if (oldName.isEmpty() || login.isEmpty() || newName.isEmpty()) {
+        return QHttpServerResponse("Missing field", QHttpServerResponse::StatusCode::BadRequest);
+    }
+    qDebug() << "Folders old name:" << oldName;
+    qDebug() << "Folders new name:" << newName;
+    qDebug() << "User login:" << login;
+
+    if (FoldersDatabase::changeUserFolder(login, oldName, newName)) {
+        qInfo() << "Folder successfully changed for user:" << login;
+        return QHttpServerResponse("Folder changed successfully", QHttpServerResponse::StatusCode::Ok);
+    } else {
+        qWarning() << "Folder change failed for user:" << login;
+        return QHttpServerResponse("Folder change failed", QHttpServerResponse::StatusCode::InternalServerError);
     }
 }
