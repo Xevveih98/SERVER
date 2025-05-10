@@ -29,6 +29,10 @@ add_executable(PSQLSERVER
   FoldersManager.cpp
   FoldersDatabase.h
   FoldersDatabase.cpp
+  TodoManager.cpp
+  TodoManager.h
+  TodoDatabase.h
+  TodoDatabase.cpp
 )
 target_link_libraries(PSQLSERVER
   Qt6::Core

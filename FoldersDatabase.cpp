@@ -71,6 +71,25 @@ QList<QPair<QString, QString>> FoldersDatabase::getUserFolders(const QString &lo
 
 bool FoldersDatabase::deleteFolder(const QString &login, const QString &folder)
 {
+    // Проверка количества папок у пользователя
+    QSqlQuery countQuery;
+    countQuery.prepare(R"(
+        SELECT COUNT(*) FROM folders WHERE user_login = :login
+    )");
+
+    countQuery.bindValue(":login", login);
+    if (!countQuery.exec() || !countQuery.next()) {
+        qWarning() << "Failed to count folders for user:" << countQuery.lastError().text();
+        return false;
+    }
+
+    int folderCount = countQuery.value(0).toInt();
+    if (folderCount <= 1) {
+        qWarning() << "Cannot delete the last remaining folder for user:" << login;
+        return false;
+    }
+
+    // Удаление папки
     QSqlQuery query;
     query.prepare(R"(
         DELETE FROM folders
@@ -85,6 +104,7 @@ bool FoldersDatabase::deleteFolder(const QString &login, const QString &folder)
 
     return true;
 }
+
 
 bool FoldersDatabase::changeUserFolder(const QString &login, const QString &oldName, const QString &newName) {
 
