@@ -1,67 +1,67 @@
 #include "FoldersDatabase.h"
 
-bool FoldersDatabase::saveUserFolder(const QString &login, const QStringList &tags)
+bool FoldersDatabase::saveUserFolder(const QString &login, const QStringList &folders)
 {
-    // Удаляем старые теги пользователя
-    QSqlQuery deleteQuery;
-    deleteQuery.prepare(R"(DELETE FROM user_tags WHERE user_login = :login)");
-    deleteQuery.bindValue(":login", login);
-    if (!deleteQuery.exec()) {
-        qWarning() << "Failed to delete old user_tags:" << deleteQuery.lastError().text();
+    if (folders.isEmpty())
         return false;
-    }
 
-    // Добавляем новые теги
-    for (const QString &tag : tags) {
+    // Добавляем новую папку (или папки — если список всё же содержит несколько)
+    for (const QString &folderName : folders) {
         QSqlQuery insertQuery;
         insertQuery.prepare(R"(
-            INSERT INTO user_tags (name, user_login)
+            INSERT INTO folders (name, user_login)
             VALUES (:name, :login)
-            ON CONFLICT (user_login, name) DO NOTHING
+            ON CONFLICT DO NOTHING
         )");
-        insertQuery.bindValue(":name", tag);
+        insertQuery.bindValue(":name", folderName);
         insertQuery.bindValue(":login", login);
         if (!insertQuery.exec()) {
-            qWarning() << "Failed to insert user tag:" << insertQuery.lastError().text();
+            qWarning() << "Failed to insert folder:" << insertQuery.lastError().text();
+            return false;
         }
     }
 
     return true;
 }
 
-QStringList FoldersDatabase::getUserFolder(const QString &login)
+QList<QPair<QString, QString>> FoldersDatabase::getUserFolders(const QString &login)
 {
-    QStringList tags;
+    QList<QPair<QString, QString>> folders;
 
     QSqlQuery query;
     query.prepare(R"(
-        SELECT name FROM user_tags
+        SELECT name, itemcount FROM folders
         WHERE user_login = :login
+        ORDER BY id ASC
     )");
     query.bindValue(":login", login);
 
     if (query.exec()) {
-        while (query.next())
-            tags << query.value(0).toString();
+        while (query.next()) {
+            QString name = query.value("name").toString();
+            QString itemCount = query.value("itemCount").toString();
+            folders.append(qMakePair(name, itemCount));
+        }
     } else {
-        qWarning() << "Failed to fetch tags for user" << login << ":" << query.lastError().text();
+        qWarning() << "Failed to get user folders:" << query.lastError().text();
     }
 
-    return tags;
+    return folders;
 }
 
 
-bool FoldersDatabase::deleteFolder(const QString &login, const QString &tag)
+
+bool FoldersDatabase::deleteFolder(const QString &login, const QString &folder)
 {
     QSqlQuery query;
     query.prepare(R"(
-        DELETE FROM user_tags
-        WHERE user_login = :login AND name = :tag
+        DELETE FROM folders
+        WHERE user_login = :login AND name = :folder
     )");
     query.bindValue(":login", login);
-    query.bindValue(":tag", tag);
+    query.bindValue(":folder", folder);
     if (!query.exec()) {
-        qWarning() << "Failed to delete tag for user:" << query.lastError().text();
+        qWarning() << "Failed to delete folder for user:" << query.lastError().text();
         return false;
     }
 

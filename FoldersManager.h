@@ -17,7 +17,7 @@ public:
 
     void extracted(QJsonArray &foldersArray, QStringList &folders);
     QHttpServerResponse handleSaveFolder(const QHttpServerRequest &request);
-    QHttpServerResponse handleGetUserFolder(const QHttpServerRequest &request);
+    QHttpServerResponse handleGetUserFolders(const QHttpServerRequest &request);
     QHttpServerResponse handleDeleteFolder(const QHttpServerRequest &request);
 };
 

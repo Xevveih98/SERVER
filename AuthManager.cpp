@@ -48,13 +48,14 @@ QHttpServerResponse AuthManager::handleLogin(const QHttpServerRequest &request)
 
     QJsonObject json = jsonDoc.object();
     const QString login = json["login"].toString();
+    const QString email = json.value("email").toString();
     const QString password = json["password"].toString();
 
-    if (login.isEmpty() || password.isEmpty()) {
+    if (login.isEmpty() || email.isEmpty() || password.isEmpty()) {
         return QHttpServerResponse("Missing login or password", QHttpServerResponder::StatusCode::BadRequest);
     }
 
-    bool success = AuthDatabase::checkUserCredentials(login, password);
+    bool success = AuthDatabase::checkUserCredentials(login, password, email);
 
     if (success) {
         qInfo() << "User" << login << "authenticated successfully.";

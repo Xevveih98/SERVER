@@ -23,14 +23,15 @@ bool AuthDatabase::addUser(const QString &login, const QString &password, const 
     return true;
 }
 
-bool AuthDatabase::checkUserCredentials(const QString &login, const QString &password) {
+bool AuthDatabase::checkUserCredentials(const QString &login, const QString &password, const QString &email) {
     QString hashedPassword = hashPassword(password);  // Хешируем введенный пароль
     QSqlQuery query;
     query.prepare(R"(
         SELECT COUNT(*) FROM users
-        WHERE user_login = :login AND user_passhach = :password
+        WHERE user_login = :login AND user_email = :email AND user_passhach = :password
     )");
     query.bindValue(":login", login);
+    query.bindValue(":email", email);
     query.bindValue(":password", hashedPassword);
 
     if (!query.exec()) {

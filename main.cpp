@@ -101,19 +101,17 @@ int main(int argc, char** argv)
                  });
 
     server.route("/savefolder", QHttpServerRequest::Method::Post,
-                 [&categoriesManager](const QHttpServerRequest &request) {
+                 [&foldersManager](const QHttpServerRequest &request) {
                      return foldersManager.handleSaveFolder(request);
                  });
-    server.route("/getuserfolder", QHttpServerRequest::Method::Get,
-                 [&categoriesManager](const QHttpServerRequest &request) {
-                     return foldersManager.handleGetUserFolder(request);
+    server.route("/getuserfolders", QHttpServerRequest::Method::Get,
+                 [&foldersManager](const QHttpServerRequest &request) {
+                     return foldersManager.handleGetUserFolders(request);
                  });
     server.route("/deletefolder", QHttpServerRequest::Method::Post,
-                 [&categoriesManager](const QHttpServerRequest &request) {
+                 [&foldersManager](const QHttpServerRequest &request) {
                      return foldersManager.handleDeleteFolder(request);
                  });
-
-
 
     startServer(server);
 
