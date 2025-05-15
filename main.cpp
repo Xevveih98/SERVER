@@ -1,5 +1,6 @@
 #include "main.h"
 #include "database.h"
+#include "TodoManager.h"
 #include "AuthManager.h"
 #include "FoldersManager.h"
 #include "CategoriesManager.h"
@@ -34,6 +35,7 @@ int main(int argc, char** argv)
     qInfo() << "Database connected successfully.";
 
     QHttpServer server;
+    TodoManager todoManager;
     AuthManager authManager;
     FoldersManager foldersManager;
     CategoriesManager categoriesManager;
@@ -115,6 +117,19 @@ int main(int argc, char** argv)
     server.route("/changefolder", QHttpServerRequest::Method::Post,
                  [&foldersManager](const QHttpServerRequest &request) {
                      return foldersManager.handleFolderChange(request);
+                 });
+
+    server.route("/savetodo", QHttpServerRequest::Method::Post,
+                 [&todoManager](const QHttpServerRequest &request) {
+                     return todoManager.handleSaveTodo(request);
+                 });
+    server.route("/getusertodoos", QHttpServerRequest::Method::Get,
+                 [&todoManager](const QHttpServerRequest &request) {
+                     return todoManager.handleGetUserTodoos(request);
+                 });
+    server.route("/deletetodo", QHttpServerRequest::Method::Post,
+                 [&todoManager](const QHttpServerRequest &request) {
+                     return todoManager.handleDeleteTodo(request);
                  });
 
     startServer(server);

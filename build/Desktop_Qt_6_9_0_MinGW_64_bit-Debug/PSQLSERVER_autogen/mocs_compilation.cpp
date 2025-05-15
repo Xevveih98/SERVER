@@ -2,3 +2,4 @@
 #include "EWIEGA46WW/moc_AuthManager.cpp"
 #include "EWIEGA46WW/moc_CategoriesManager.cpp"
 #include "EWIEGA46WW/moc_FoldersManager.cpp"
+#include "EWIEGA46WW/moc_TodoManager.cpp"

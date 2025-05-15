@@ -20,7 +20,7 @@ bool CategoriesDatabase::saveUserTags(const QString &login, const QStringList &t
             ON CONFLICT (user_login, name) DO NOTHING
         )");
         insertQuery.bindValue(":name", tag);
-        insertQuery.bindValue(":login", login);
+        insertQuery.bindValue(":login", login.trimmed());
         if (!insertQuery.exec()) {
             qWarning() << "Failed to insert user tag:" << insertQuery.lastError().text();
         }
@@ -38,7 +38,7 @@ QStringList CategoriesDatabase::getUserTags(const QString &login)
         SELECT name FROM user_tags
         WHERE user_login = :login
     )");
-    query.bindValue(":login", login);
+    query.bindValue(":login", login.trimmed());
 
     if (query.exec()) {
         while (query.next())
@@ -76,9 +76,9 @@ bool CategoriesDatabase::saveUserActivity(const QString &login, const QString &i
         VALUES (:login, :icon_id, :icon_label)
         ON CONFLICT (user_login, icon_label) DO NOTHING
     )");
-    query.bindValue(":login", login);
-    query.bindValue(":icon_id", iconId.toInt()); // Преобразуем в int, если iconId — строка
-    query.bindValue(":icon_label", iconLabel);
+    query.bindValue(":login", login.trimmed());
+    query.bindValue(":icon_id", iconId.toInt());
+    query.bindValue(":icon_label", iconLabel.trimmed());
 
     if (!query.exec()) {
         qWarning() << "Failed to save user activity:" << query.lastError().text();
@@ -104,7 +104,7 @@ QList<QPair<QString, QString>> CategoriesDatabase::getUserActivities(const QStri
     if (query.exec()) {
         while (query.next()) {
             QString iconId = query.value("icon_id").toString();
-            QString iconLabel = query.value("icon_label").toString();
+            QString iconLabel = query.value("icon_label").toString().trimmed();
             activities.append(qMakePair(iconId, iconLabel));
         }
     } else {
@@ -122,15 +122,14 @@ bool CategoriesDatabase::deleteActivity(const QString &login, const QString &act
         DELETE FROM user_activities
         WHERE user_login = :login AND icon_label = :activity
     )");
-    query.bindValue(":login", login);
-    query.bindValue(":activity", activity);
+    query.bindValue(":login", login.trimmed());
+    query.bindValue(":activity", activity.trimmed());
 
     if (!query.exec()) {
         qWarning() << "Failed to delete activity:" << query.lastError().text();
         return false;
     }
 
-    // Проверим, удалилось ли что-то
     if (query.numRowsAffected() == 0) {
         qWarning() << "No activity found to delete for user" << login << "and activity" << activity;
         return false;
@@ -141,14 +140,15 @@ bool CategoriesDatabase::deleteActivity(const QString &login, const QString &act
 
 bool CategoriesDatabase::saveUserEmotion(const QString &login, const QString &iconId, const QString &iconLabel)
 {
+
     QSqlQuery query;
     query.prepare(R"(
         INSERT INTO user_emotions (user_login, icon_id, icon_label)
         VALUES (:login, :icon_id, :icon_label)
         ON CONFLICT (user_login, icon_label) DO NOTHING
     )");
-    query.bindValue(":login", login);
-    query.bindValue(":icon_id", iconId.toInt()); // Преобразуем в int, если iconId — строка
+    query.bindValue(":login", login.trimmed());
+    query.bindValue(":icon_id", iconId.toInt());
     query.bindValue(":icon_label", iconLabel);
 
     if (!query.exec()) {
@@ -175,7 +175,7 @@ QList<QPair<QString, QString>> CategoriesDatabase::getUserEmotions(const QString
     if (query.exec()) {
         while (query.next()) {
             QString iconId = query.value("icon_id").toString();
-            QString iconLabel = query.value("icon_label").toString();
+            QString iconLabel = query.value("icon_label").toString().trimmed();
             emotions.append(qMakePair(iconId, iconLabel));
         }
     } else {
@@ -192,8 +192,8 @@ bool CategoriesDatabase::deleteEmotion(const QString &login, const QString &emot
         DELETE FROM user_emotions
         WHERE user_login = :login AND icon_label = :emotion
     )");
-    query.bindValue(":login", login);
-    query.bindValue(":emotion", emotion);
+    query.bindValue(":login", login.trimmed());
+    query.bindValue(":emotion", emotion.trimmed());
 
     if (!query.exec()) {
         qWarning() << "Failed to delete emotion:" << query.lastError().text();
