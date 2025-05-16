@@ -10,16 +10,23 @@
 class CategoriesDatabase {
 
 public:
+    struct UserItem {
+        int id;
+        int iconId;
+        QString label;
+    };
+
+public:
     static bool saveUserTags(const QString &login, const QStringList &tags);
-    static QStringList getUserTags(const QString &login);
+    static QList<UserItem> getUserTags(const QString &login);
     static bool deleteTag(const QString &login, const QString &tag);
 
     static bool saveUserActivity(const QString &login, const QString &iconId, const QString &iconlabel);
-    static QList<QPair<QString, QString>> getUserActivities(const QString &login);
+    static QList<UserItem> getUserActivities(const QString &login);
     static bool deleteActivity(const QString &login, const QString &activity);
 
     static bool saveUserEmotion(const QString &login, const QString &iconId, const QString &iconlabel);
-    static QList<QPair<QString, QString>> getUserEmotions(const QString &login);
+    static QList<UserItem> getUserEmotions(const QString &login);
     static bool deleteEmotion(const QString &login, const QString &emotion);
 };
 

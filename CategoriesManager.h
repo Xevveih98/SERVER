@@ -15,7 +15,7 @@ class CategoriesManager : public QObject
 public:
     explicit CategoriesManager(QObject *parent = nullptr);
 
-    void extracted(QJsonArray &tagsArray, QStringList &tags);
+    //void extracted(QJsonArray &tagsArray, QStringList &tags);
     QHttpServerResponse handleSaveTags(const QHttpServerRequest &request);
     QHttpServerResponse handleGetUserTags(const QHttpServerRequest &request);
     QHttpServerResponse handleDeleteTag(const QHttpServerRequest &request);

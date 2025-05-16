@@ -40,29 +40,31 @@ QHttpServerResponse CategoriesManager::handleSaveTags(const QHttpServerRequest &
 
 QHttpServerResponse CategoriesManager::handleGetUserTags(const QHttpServerRequest &request)
 {
-    // Извлечение параметра "login" из строки запроса URL
     const QUrlQuery query(request.url());
     const QString login = query.queryItemValue("login");
 
-    // Проверка на наличие параметра login
     if (login.isEmpty()) {
         return QHttpServerResponse("Missing login", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    // Получаем теги пользователя из базы данных
-    QStringList tags = CategoriesDatabase::getUserTags(login);
+    // Теперь возвращается QList<UserItem>
+    QList<CategoriesDatabase::UserItem> tags = CategoriesDatabase::getUserTags(login);
 
-    // Создаем JSON массив с тегами
-    QJsonArray tagArray;
-    for (const QString &tag : tags) {
-        tagArray.append(tag);
+    if (tags.isEmpty()) {
+        return QHttpServerResponse("No tags found", QHttpServerResponse::StatusCode::NotFound);
     }
 
-    // Формируем JSON ответ
+    QJsonArray tagArray;
+    for (const auto &tag : tags) {
+        QJsonObject tagObj;
+        tagObj["id"] = tag.id;
+        tagObj["tag"] = tag.label;
+        tagArray.append(tagObj);
+    }
+
     QJsonObject response;
     response["tags"] = tagArray;
 
-    // Возвращаем ответ с тегами в формате JSON
     return QHttpServerResponse("application/json", QJsonDocument(response).toJson());
 }
 
@@ -122,8 +124,6 @@ QHttpServerResponse CategoriesManager::handleSaveEmotion(const QHttpServerReques
 
 QHttpServerResponse CategoriesManager::handleGetUserEmotions(const QHttpServerRequest &request)
 {
-    qDebug() << "Received request at /getuseremotions";
-
     if (request.method() != QHttpServerRequest::Method::Get) {
         return QHttpServerResponse("Invalid method", QHttpServerResponse::StatusCode::MethodNotAllowed);
     }
@@ -131,41 +131,30 @@ QHttpServerResponse CategoriesManager::handleGetUserEmotions(const QHttpServerRe
     const QUrlQuery query(request.url());
     const QString login = query.queryItemValue("login");
 
-    qDebug() << "Extracted login parameter:" << login;
-
     if (login.isEmpty()) {
         return QHttpServerResponse("Missing login", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    // Получаем все эмоции пользователя из базы данных
-    QList<QPair<QString, QString>> emotions = CategoriesDatabase::getUserEmotions(login);
-    qDebug() << "Emotions fetched from DB:" << emotions;
+    QList<CategoriesDatabase::UserItem> emotions = CategoriesDatabase::getUserEmotions(login);
 
     if (emotions.isEmpty()) {
-        qWarning() << "No emotion found for login:" << login;
-        return QHttpServerResponse("No emotion found", QHttpServerResponse::StatusCode::NotFound);
+        return QHttpServerResponse("No emotions found", QHttpServerResponse::StatusCode::NotFound);
     }
 
-    // Формируем JSON-ответ с массивом "emotions"
-    QJsonObject response;
     QJsonArray emotionsArray;
-
     for (const auto &emotion : emotions) {
         QJsonObject emotionObj;
-        emotionObj["emotion"] = emotion.second;
-        emotionObj["iconId"] = emotion.first;
-
+        emotionObj["id"] = emotion.id;
+        emotionObj["emotion"] = emotion.label;
+        emotionObj["iconId"] = emotion.iconId;
         emotionsArray.append(emotionObj);
     }
 
-    qDebug() << "Emotions fetched from DB:" << emotionsArray;
-
+    QJsonObject response;
     response["emotions"] = emotionsArray;
 
     return QHttpServerResponse("application/json", QJsonDocument(response).toJson());
 }
-
-
 
 QHttpServerResponse CategoriesManager::handleDeleteEmotion(const QHttpServerRequest &request)
 {
@@ -223,8 +212,6 @@ QHttpServerResponse CategoriesManager::handleSaveActivity(const QHttpServerReque
 
 QHttpServerResponse CategoriesManager::handleGetUserActivity(const QHttpServerRequest &request)
 {
-    qDebug() << "Received request at /getuseractivity";
-
     if (request.method() != QHttpServerRequest::Method::Get) {
         return QHttpServerResponse("Invalid method", QHttpServerResponse::StatusCode::MethodNotAllowed);
     }
@@ -232,37 +219,26 @@ QHttpServerResponse CategoriesManager::handleGetUserActivity(const QHttpServerRe
     const QUrlQuery query(request.url());
     const QString login = query.queryItemValue("login");
 
-    qDebug() << "Extracted login parameter:" << login;
-
     if (login.isEmpty()) {
         return QHttpServerResponse("Missing login", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    // Получаем все активности пользователя из базы данных
-    QList<QPair<QString, QString>> activities = CategoriesDatabase::getUserActivities(login);
-    qDebug() << "Activities fetched from DB:" << activities;
-
+    QList<CategoriesDatabase::UserItem> activities = CategoriesDatabase::getUserActivities(login);
 
     if (activities.isEmpty()) {
-        qWarning() << "No activity found for login:" << login;
-        return QHttpServerResponse("No activity found", QHttpServerResponse::StatusCode::NotFound);
+        return QHttpServerResponse("No activities found", QHttpServerResponse::StatusCode::NotFound);
     }
 
-    // Формируем JSON-ответ с массивом "activities"
-    QJsonObject response;
     QJsonArray activitiesArray;
-
     for (const auto &activity : activities) {
         QJsonObject activityObj;
-        activityObj["activity"] = activity.second;
-        activityObj["iconId"] = activity.first;
-
+        activityObj["id"] = activity.id;
+        activityObj["activity"] = activity.label;
+        activityObj["iconId"] = activity.iconId;
         activitiesArray.append(activityObj);
     }
 
-    qDebug() << "Activities fetched from DB:" << activitiesArray;
-
-
+    QJsonObject response;
     response["activities"] = activitiesArray;
 
     return QHttpServerResponse("application/json", QJsonDocument(response).toJson());

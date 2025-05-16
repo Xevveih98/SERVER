@@ -29,27 +29,31 @@ bool CategoriesDatabase::saveUserTags(const QString &login, const QStringList &t
     return true;
 }
 
-QStringList CategoriesDatabase::getUserTags(const QString &login)
+QList<CategoriesDatabase::UserItem> CategoriesDatabase::getUserTags(const QString &login)
 {
-    QStringList tags;
+    QList<UserItem> tags;
 
     QSqlQuery query;
     query.prepare(R"(
-        SELECT name FROM user_tags
+        SELECT id, name
+        FROM user_tags
         WHERE user_login = :login
     )");
     query.bindValue(":login", login.trimmed());
 
     if (query.exec()) {
-        while (query.next())
-            tags << query.value(0).toString();
+        while (query.next()) {
+            UserItem item;
+            item.id = query.value("id").toInt();
+            item.label = query.value("name").toString().trimmed();
+            tags.append(item);
+        }
     } else {
         qWarning() << "Failed to fetch tags for user" << login << ":" << query.lastError().text();
     }
 
     return tags;
 }
-
 
 bool CategoriesDatabase::deleteTag(const QString &login, const QString &tag)
 {
@@ -88,13 +92,13 @@ bool CategoriesDatabase::saveUserActivity(const QString &login, const QString &i
     return true;
 }
 
-QList<QPair<QString, QString>> CategoriesDatabase::getUserActivities(const QString &login)
+QList<CategoriesDatabase::UserItem> CategoriesDatabase::getUserActivities(const QString &login)
 {
-    QList<QPair<QString, QString>> activities;
+    QList<UserItem> activities;
 
     QSqlQuery query;
     query.prepare(R"(
-        SELECT icon_id, icon_label
+        SELECT id, icon_id, icon_label
         FROM user_activities
         WHERE user_login = :login
         ORDER BY id DESC
@@ -103,9 +107,11 @@ QList<QPair<QString, QString>> CategoriesDatabase::getUserActivities(const QStri
 
     if (query.exec()) {
         while (query.next()) {
-            QString iconId = query.value("icon_id").toString();
-            QString iconLabel = query.value("icon_label").toString().trimmed();
-            activities.append(qMakePair(iconId, iconLabel));
+            UserItem item;
+            item.id = query.value("id").toInt();
+            item.iconId = query.value("icon_id").toInt();
+            item.label = query.value("icon_label").toString().trimmed();
+            activities.append(item);
         }
     } else {
         qWarning() << "Failed to get user activities:" << query.lastError().text();
@@ -159,13 +165,13 @@ bool CategoriesDatabase::saveUserEmotion(const QString &login, const QString &ic
     return true;
 }
 
-QList<QPair<QString, QString>> CategoriesDatabase::getUserEmotions(const QString &login)
+QList<CategoriesDatabase::UserItem> CategoriesDatabase::getUserEmotions(const QString &login)
 {
-    QList<QPair<QString, QString>> emotions;
+    QList<UserItem> emotions;
 
     QSqlQuery query;
     query.prepare(R"(
-        SELECT icon_id, icon_label
+        SELECT id, icon_id, icon_label
         FROM user_emotions
         WHERE user_login = :login
         ORDER BY id DESC
@@ -174,9 +180,11 @@ QList<QPair<QString, QString>> CategoriesDatabase::getUserEmotions(const QString
 
     if (query.exec()) {
         while (query.next()) {
-            QString iconId = query.value("icon_id").toString();
-            QString iconLabel = query.value("icon_label").toString().trimmed();
-            emotions.append(qMakePair(iconId, iconLabel));
+            UserItem item;
+            item.id = query.value("id").toInt();
+            item.iconId = query.value("icon_id").toInt();
+            item.label = query.value("icon_label").toString().trimmed();
+            emotions.append(item);
         }
     } else {
         qWarning() << "Failed to get user emotions:" << query.lastError().text();
