@@ -1,4 +1,5 @@
 #include "main.h"
+#include "EntriesManager.h"
 #include "database.h"
 #include "TodoManager.h"
 #include "AuthManager.h"
@@ -39,6 +40,7 @@ int main(int argc, char** argv)
     AuthManager authManager;
     FoldersManager foldersManager;
     CategoriesManager categoriesManager;
+    EntriesManager entriesManager;
 
     server.route("/register", QHttpServerRequest::Method::Post,
                  [&authManager](const QHttpServerRequest &request) {
@@ -130,6 +132,15 @@ int main(int argc, char** argv)
     server.route("/deletetodo", QHttpServerRequest::Method::Post,
                  [&todoManager](const QHttpServerRequest &request) {
                      return todoManager.handleDeleteTodo(request);
+                 });
+
+    server.route("/saveentry", QHttpServerRequest::Method::Post,
+                 [&entriesManager](const QHttpServerRequest &request) {
+                     return entriesManager.handleSaveEntry(request);
+                 });
+    server.route("/getuserentries", QHttpServerRequest::Method::Get,
+                 [&entriesManager](const QHttpServerRequest &request) {
+                     return entriesManager.handleGetUserEntries(request);
                  });
 
     startServer(server);

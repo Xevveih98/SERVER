@@ -33,6 +33,12 @@ add_executable(PSQLSERVER
   TodoManager.h
   TodoDatabase.h
   TodoDatabase.cpp
+  EntriesManager.h
+  EntriesManager.cpp
+  EntryUser.h
+
+  EntriesDatabase.cpp
+  EntriesDatabase.h
 )
 target_link_libraries(PSQLSERVER
   Qt6::Core

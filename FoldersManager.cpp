@@ -82,8 +82,9 @@ QHttpServerResponse FoldersManager::handleGetUserFolders(const QHttpServerReques
         return QHttpServerResponse("Missing login", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    QList<QPair<QString, QString>> folders = FoldersDatabase::getUserFolders(login);
-    qDebug() << "Folders fetched from DB:" << folders;
+    // Используем новую структуру и изменённый метод
+    QList<FoldersDatabase::FolderItem> folders = FoldersDatabase::getUserFolders(login);
+    qDebug() << "Folders fetched from DB:" << folders.size();
 
     if (folders.isEmpty()) {
         qWarning() << "No folder found for login:" << login;
@@ -93,21 +94,20 @@ QHttpServerResponse FoldersManager::handleGetUserFolders(const QHttpServerReques
     QJsonObject response;
     QJsonArray foldersArray;
 
-    for (const auto &folder : folders) {
+    for (const FoldersDatabase::FolderItem &folder : folders) {
         QJsonObject folderObj;
-        folderObj["name"] = folder.first;
-        folderObj["itemCount"] = folder.second;
+        folderObj["id"] = folder.id;
+        folderObj["name"] = folder.name;
+        folderObj["itemCount"] = folder.itemCount;
 
         foldersArray.append(folderObj);
     }
-
-    qDebug() << "Folders fetched from DB:" << foldersArray;
-
 
     response["folders"] = foldersArray;
 
     return QHttpServerResponse("application/json", QJsonDocument(response).toJson());
 }
+
 
 QHttpServerResponse FoldersManager::handleDeleteFolder(const QHttpServerRequest &request)
 {

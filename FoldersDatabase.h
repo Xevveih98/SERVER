@@ -10,8 +10,15 @@
 class FoldersDatabase {
 
 public:
+    struct FolderItem {
+        int id;
+        QString name;
+        int itemCount;
+    };
+
+public:
     static bool saveUserFolder(const QString &login, const QStringList &folders);
-    static QList<QPair<QString, QString>> getUserFolders(const QString &login);
+    static QList<FolderItem> getUserFolders(const QString &login);
     static bool deleteFolder(const QString &login, const QString &folder);
     static bool changeUserFolder(const QString &login, const QString &oldName, const QString &newName);
 };

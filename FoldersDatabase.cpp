@@ -42,13 +42,13 @@ bool FoldersDatabase::saveUserFolder(const QString &login, const QStringList &fo
 }
 
 
-QList<QPair<QString, QString>> FoldersDatabase::getUserFolders(const QString &login)
+QList<FoldersDatabase::FolderItem> FoldersDatabase::getUserFolders(const QString &login)
 {
-    QList<QPair<QString, QString>> folders;
+    QList<FolderItem> folders;
 
     QSqlQuery query;
     query.prepare(R"(
-        SELECT name, itemcount FROM folders
+        SELECT id, name, itemcount FROM folders
         WHERE user_login = :login
         ORDER BY id ASC
     )");
@@ -56,9 +56,11 @@ QList<QPair<QString, QString>> FoldersDatabase::getUserFolders(const QString &lo
 
     if (query.exec()) {
         while (query.next()) {
-            QString name = query.value("name").toString();
-            QString itemCount = query.value("itemCount").toString();
-            folders.append(qMakePair(name, itemCount));
+            FolderItem folder;
+            folder.id = query.value("id").toInt();
+            folder.name = query.value("name").toString();
+            folder.itemCount = query.value("itemcount").toInt();
+            folders.append(folder);
         }
     } else {
         qWarning() << "Failed to get user folders:" << query.lastError().text();
@@ -66,7 +68,6 @@ QList<QPair<QString, QString>> FoldersDatabase::getUserFolders(const QString &lo
 
     return folders;
 }
-
 
 
 bool FoldersDatabase::deleteFolder(const QString &login, const QString &folder)

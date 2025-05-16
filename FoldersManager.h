@@ -9,6 +9,7 @@
 #include <QJsonArray>
 #include <QDebug>
 
+
 class FoldersManager : public QObject
 {
     Q_OBJECT
