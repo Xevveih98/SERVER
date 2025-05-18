@@ -67,7 +67,7 @@ bool EntriesDatabase::saveUserEntry(const QString &login, const EntryUser &entry
 
 //--------- загрузка записей -------------------------
 
-QList<EntryUser> EntriesDatabase::getUserEntries(const QString &login)
+QList<EntryUser> EntriesDatabase::getUserEntries(const QString &login, int folderId, int year, int month)
 {
     QList<EntryUser> entries;
 
@@ -76,9 +76,15 @@ QList<EntryUser> EntriesDatabase::getUserEntries(const QString &login)
         SELECT id, entry_title, entry_content, entry_mood_id, entry_folder_id, entry_date, entry_time
         FROM entries
         WHERE user_login = :login
+          AND entry_folder_id = :folderId
+          AND EXTRACT(YEAR FROM entry_date) = :year
+          AND EXTRACT(MONTH FROM entry_date) = :month
         ORDER BY id ASC
     )");
     query.bindValue(":login", login);
+    query.bindValue(":folderId", folderId);
+    query.bindValue(":year", year);
+    query.bindValue(":month", month);
 
     if (!query.exec()) {
         qWarning() << "Failed to get entries:" << query.lastError().text();
@@ -104,6 +110,7 @@ QList<EntryUser> EntriesDatabase::getUserEntries(const QString &login)
 
     return entries;
 }
+
 
 QVector<UserItem> EntriesDatabase::getTagsForEntry(int entryId)
 {

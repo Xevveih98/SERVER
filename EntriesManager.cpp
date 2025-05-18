@@ -86,20 +86,28 @@ QHttpServerResponse EntriesManager::handleGetUserEntries(const QHttpServerReques
 
     const QUrlQuery query(request.url());
     const QString login = query.queryItemValue("login");
+    const int folderId = query.queryItemValue("folderId").toInt();
+    const int year = query.queryItemValue("year").toInt();
+    const int month = query.queryItemValue("month").toInt();
 
-    qDebug() << "Extracted login parameter:" << login;
+    qDebug() << "Extracted params - login:" << login
+             << "| folderId:" << folderId
+             << "| year:" << year
+             << "| month:" << month;
 
-    if (login.isEmpty()) {
-        return QHttpServerResponse("Missing login", QHttpServerResponse::StatusCode::BadRequest);
+    if (login.isEmpty() || folderId == 0 || year == 0 || month == 0) {
+        return QHttpServerResponse("Missing or invalid parameters", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    QList<EntryUser> entries = EntriesDatabase::getUserEntries(login);
+    QList<EntryUser> entries = EntriesDatabase::getUserEntries(login, folderId, year, month);
     qDebug() << "Entries fetched from DB:" << entries.size();
 
     if (entries.isEmpty()) {
-        qWarning() << "No entries found for login:" << login;
-        return QHttpServerResponse("No entries found", QHttpServerResponse::StatusCode::NotFound);
+        QJsonObject response;
+        response["entries"] = QJsonArray();
+        return QHttpServerResponse("application/json", QJsonDocument(response).toJson());
     }
+
     QJsonArray entriesArray;
 
     for (const EntryUser &entry : entries) {
@@ -112,7 +120,6 @@ QHttpServerResponse EntriesManager::handleGetUserEntries(const QHttpServerReques
         entryObj["date"] = entry.date.toString(Qt::ISODate);
         entryObj["time"] = entry.time.toString("HH:mm");
 
-        // Формируем массив tags
         QJsonArray tagsArray;
         for (const auto &tag : entry.tags) {
             QJsonObject tagObj;
@@ -123,7 +130,6 @@ QHttpServerResponse EntriesManager::handleGetUserEntries(const QHttpServerReques
         }
         entryObj["tags"] = tagsArray;
 
-        // Формируем массив activities
         QJsonArray activitiesArray;
         for (const auto &act : entry.activities) {
             QJsonObject actObj;
@@ -134,7 +140,6 @@ QHttpServerResponse EntriesManager::handleGetUserEntries(const QHttpServerReques
         }
         entryObj["activities"] = activitiesArray;
 
-        // Формируем массив emotions
         QJsonArray emotionsArray;
         for (const auto &emo : entry.emotions) {
             QJsonObject emoObj;
@@ -151,6 +156,5 @@ QHttpServerResponse EntriesManager::handleGetUserEntries(const QHttpServerReques
     QJsonObject response;
     response["entries"] = entriesArray;
 
-    // Возвращаем JSON с типом application/json
     return QHttpServerResponse("application/json", QJsonDocument(response).toJson());
 }

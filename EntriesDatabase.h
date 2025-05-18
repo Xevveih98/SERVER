@@ -14,7 +14,7 @@ class EntriesDatabase
 public:
 
     static bool saveUserEntry(const QString &login, const EntryUser &entry);
-    static QList<EntryUser> getUserEntries(const QString &login);
+    static QList<EntryUser> getUserEntries(const QString &login, int folderId, int year, int month);
 
 private:
     static QVector<UserItem> getTagsForEntry(int entryId);
