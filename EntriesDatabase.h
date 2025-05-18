@@ -15,6 +15,8 @@ public:
 
     static bool saveUserEntry(const QString &login, const EntryUser &entry);
     static QList<EntryUser> getUserEntries(const QString &login, int folderId, int year, int month);
+    static QList<EntryUser> getUserEntriesByKeywords(const QString &login, const QStringList &keywords);
+
 
 private:
     static QVector<UserItem> getTagsForEntry(int entryId);

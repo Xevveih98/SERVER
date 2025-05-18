@@ -158,3 +158,95 @@ QHttpServerResponse EntriesManager::handleGetUserEntries(const QHttpServerReques
 
     return QHttpServerResponse("application/json", QJsonDocument(response).toJson());
 }
+
+QHttpServerResponse EntriesManager::handleSearchEntriesByKeywords(const QHttpServerRequest &request)
+{
+    qDebug() << "[/searchentriesbywords] Request received.";
+
+    if (request.method() != QHttpServerRequest::Method::Post) {
+        qWarning() << "Invalid method:" << request.method();
+        return QHttpServerResponse("Invalid method", QHttpServerResponse::StatusCode::MethodNotAllowed);
+    }
+
+    QJsonParseError parseError;
+    const QByteArray body = request.body();
+    qDebug() << "Raw body:" << QString::fromUtf8(body);
+
+    const QJsonDocument doc = QJsonDocument::fromJson(body, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        qWarning() << "JSON parse error:" << parseError.errorString();
+        return QHttpServerResponse("Invalid JSON", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    QJsonObject obj = doc.object();
+    const QString login = obj.value("login").toString();
+    const QJsonArray keywordsJson = obj.value("keywords").toArray();
+
+    if (login.isEmpty() || keywordsJson.isEmpty()) {
+        qWarning() << "Missing login or keywords. login:" << login << ", keywords:" << keywordsJson;
+        return QHttpServerResponse("Missing login or keywords", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    QStringList keywords;
+    for (const QJsonValue &value : keywordsJson) {
+        const QString word = value.toString().trimmed();
+        if (!word.isEmpty()) {
+            keywords << word;
+        }
+    }
+
+    qDebug() << "Parsed login:" << login;
+    qDebug() << "Parsed keywords:" << keywords;
+
+    QList<EntryUser> entries = EntriesDatabase::getUserEntriesByKeywords(login, keywords);
+    qDebug() << "Found entries count:" << entries.size();
+
+    QJsonArray entriesArray;
+    for (const EntryUser &entry : entries) {
+        QJsonObject entryObj;
+        entryObj["id"] = entry.id;
+        entryObj["title"] = entry.title;
+        entryObj["content"] = entry.content;
+        entryObj["moodId"] = entry.moodId;
+        entryObj["folderId"] = entry.folderId;
+        entryObj["date"] = entry.date.toString(Qt::ISODate);
+        entryObj["time"] = entry.time.toString("HH:mm");
+
+        QJsonArray tagsArray;
+        for (const auto &tag : entry.tags) {
+            QJsonObject tagObj;
+            tagObj["id"] = tag.id;
+            tagObj["iconId"] = tag.iconId;
+            tagObj["label"] = tag.label;
+            tagsArray.append(tagObj);
+        }
+        entryObj["tags"] = tagsArray;
+
+        QJsonArray activitiesArray;
+        for (const auto &act : entry.activities) {
+            QJsonObject actObj;
+            actObj["id"] = act.id;
+            actObj["iconId"] = act.iconId;
+            actObj["label"] = act.label;
+            activitiesArray.append(actObj);
+        }
+        entryObj["activities"] = activitiesArray;
+
+        QJsonArray emotionsArray;
+        for (const auto &emo : entry.emotions) {
+            QJsonObject emoObj;
+            emoObj["id"] = emo.id;
+            emoObj["iconId"] = emo.iconId;
+            emoObj["label"] = emo.label;
+            emotionsArray.append(emoObj);
+        }
+        entryObj["emotions"] = emotionsArray;
+
+        entriesArray.append(entryObj);
+    }
+
+    QJsonObject response;
+    response["entries"] = entriesArray;
+
+    return QHttpServerResponse("application/json", QJsonDocument(response).toJson());
+}

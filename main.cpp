@@ -142,6 +142,10 @@ int main(int argc, char** argv)
                  [&entriesManager](const QHttpServerRequest &request) {
                      return entriesManager.handleGetUserEntries(request);
                  });
+    server.route("/searchentriesbywords", QHttpServerRequest::Method::Post,
+                 [&entriesManager](const QHttpServerRequest &request) {
+                     return entriesManager.handleSearchEntriesByKeywords(request);
+                 });
 
     startServer(server);
 

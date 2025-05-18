@@ -111,6 +111,72 @@ QList<EntryUser> EntriesDatabase::getUserEntries(const QString &login, int folde
     return entries;
 }
 
+QList<EntryUser> EntriesDatabase::getUserEntriesByKeywords(const QString &login, const QStringList &keywords)
+{
+    QList<EntryUser> entries;
+
+    if (keywords.isEmpty()) {
+        qWarning() << "No keywords provided.";
+        return entries;
+    }
+
+    // Формируем часть WHERE с OR для каждого ключевого слова
+    QStringList conditions;
+    for (int i = 0; i < keywords.size(); ++i) {
+        QString key = QString("%%%1%%").arg(keywords[i]);
+        conditions << QString(R"(
+            (entry_title ILIKE :kw%1 OR
+             regexp_replace(
+                 regexp_replace(entry_content, '<[^>]*>', '', 'g'),
+                 E'&[#a-zA-Z0-9]+;', '', 'g'
+             ) ILIKE :kw%1)
+        )").arg(i);
+
+    }
+
+    QString keywordCondition = conditions.join(" OR ");
+
+    QString queryStr = QString(R"(
+        SELECT id, entry_title, entry_content, entry_mood_id, entry_folder_id, entry_date, entry_time
+        FROM entries
+        WHERE user_login = :login
+          AND (%1)
+        ORDER BY id ASC
+    )").arg(keywordCondition);
+
+    QSqlQuery query;
+    query.prepare(queryStr);
+    query.bindValue(":login", login);
+    for (int i = 0; i < keywords.size(); ++i) {
+        query.bindValue(QString(":kw%1").arg(i), "%" + keywords[i] + "%");
+    }
+
+    if (!query.exec()) {
+        qWarning() << "Failed to get entries by keywords:" << query.lastError().text();
+        return entries;
+    }
+
+    while (query.next()) {
+        int entryId = query.value("id").toInt();
+        QString title = query.value("entry_title").toString();
+        QString content = query.value("entry_content").toString();
+        int moodId = query.value("entry_mood_id").toInt();
+        int folderId = query.value("entry_folder_id").toInt();
+        QDate date = query.value("entry_date").toDate();
+        QTime time = query.value("entry_time").toTime();
+
+        QVector<UserItem> tags = getTagsForEntry(entryId);
+        QVector<UserItem> activities = getActivitiesForEntry(entryId);
+        QVector<UserItem> emotions = getEmotionsForEntry(entryId);
+
+        EntryUser entry(entryId, login, title, content, moodId, folderId, date, time, tags, activities, emotions);
+        entries.append(entry);
+    }
+
+    return entries;
+}
+
+
 
 QVector<UserItem> EntriesDatabase::getTagsForEntry(int entryId)
 {
