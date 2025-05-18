@@ -16,6 +16,7 @@ public:
     static bool saveUserEntry(const QString &login, const EntryUser &entry);
     static QList<EntryUser> getUserEntries(const QString &login, int folderId, int year, int month);
     static QList<EntryUser> getUserEntriesByKeywords(const QString &login, const QStringList &keywords);
+    static QList<EntryUser> getUserEntriesByTags(const QString &login, const QList<int> &tagIds);
 
 
 private:

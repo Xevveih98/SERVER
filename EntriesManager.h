@@ -19,10 +19,10 @@ class EntriesManager
 public:
     EntriesManager() = default;
 
-    // Основной метод — обработчик запроса
     QHttpServerResponse handleSaveEntry(const QHttpServerRequest &request);
     QHttpServerResponse handleGetUserEntries(const QHttpServerRequest &request);
     QHttpServerResponse handleSearchEntriesByKeywords(const QHttpServerRequest &request);
+    QHttpServerResponse handleSearchEntriesByTags(const QHttpServerRequest &request);
 
 private:
 

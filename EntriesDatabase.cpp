@@ -120,7 +120,6 @@ QList<EntryUser> EntriesDatabase::getUserEntriesByKeywords(const QString &login,
         return entries;
     }
 
-    // Формируем часть WHERE с OR для каждого ключевого слова
     QStringList conditions;
     for (int i = 0; i < keywords.size(); ++i) {
         QString key = QString("%%%1%%").arg(keywords[i]);
@@ -175,6 +174,68 @@ QList<EntryUser> EntriesDatabase::getUserEntriesByKeywords(const QString &login,
 
     return entries;
 }
+
+QList<EntryUser> EntriesDatabase::getUserEntriesByTags(const QString &login, const QList<int> &tagIds)
+{
+    QList<EntryUser> entries;
+
+    if (tagIds.isEmpty()) {
+        qWarning() << "No tag IDs provided.";
+        return entries;
+    }
+
+    QStringList placeholders;
+    for (int i = 0; i < tagIds.size(); ++i) {
+        placeholders << "?";
+    }
+
+    QString queryStr = QString(R"(
+        SELECT DISTINCT e.id, e.entry_title, e.entry_content, e.entry_mood_id, e.entry_folder_id, e.entry_date, e.entry_time
+        FROM entries e
+        JOIN entry_tags et ON e.id = et.entry_id
+        JOIN users u ON e.user_login = u.user_login
+        WHERE u.user_login = ?
+          AND et.tag_id IN (%1)
+        ORDER BY e.id ASC
+    )").arg(placeholders.join(", "));
+
+    QSqlQuery query;
+    if (!query.prepare(queryStr)) {
+        qWarning() << "Query prepare failed:" << query.lastError().text();
+        return entries;
+    }
+
+    query.addBindValue(login);
+    for (int tagId : tagIds) {
+        query.addBindValue(tagId);
+    }
+
+    if (!query.exec()) {
+        qWarning() << "Failed to get entries by tags:" << query.lastError().text();
+        return entries;
+    }
+
+    while (query.next()) {
+        int entryId = query.value("id").toInt();
+        QString title = query.value("entry_title").toString();
+        QString content = query.value("entry_content").toString();
+        int moodId = query.value("entry_mood_id").toInt();
+        int folderId = query.value("entry_folder_id").toInt();
+        QDate date = query.value("entry_date").toDate();
+        QTime time = query.value("entry_time").toTime();
+
+        QVector<UserItem> tags = getTagsForEntry(entryId);
+        QVector<UserItem> activities = getActivitiesForEntry(entryId);
+        QVector<UserItem> emotions = getEmotionsForEntry(entryId);
+
+        EntryUser entry(entryId, login, title, content, moodId, folderId, date, time, tags, activities, emotions);
+        entries.append(entry);
+    }
+
+    return entries;
+}
+
+
 
 
 
