@@ -62,8 +62,22 @@ bool EntriesDatabase::saveUserEntry(const QString &login, const EntryUser &entry
     if (!insertRelation("entry_user_activities", "user_activity_id", entry.activities)) return false;
     if (!insertRelation("entry_user_emotions", "user_emotion_id", entry.emotions)) return false;
 
+    QSqlQuery updateFolderQuery;
+    updateFolderQuery.prepare(R"(
+        UPDATE folders
+        SET itemcount = itemcount + 1
+        WHERE id = :folderId;
+    )");
+    updateFolderQuery.bindValue(":folderId", entry.folderId);
+
+    if (!updateFolderQuery.exec()) {
+        qWarning() << "Ошибка при увеличении itemcount в folders:" << updateFolderQuery.lastError().text();
+        return false;
+    }
+
     return true;
 }
+
 
 //--------- загрузка записей -------------------------
 

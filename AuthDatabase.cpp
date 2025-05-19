@@ -3,7 +3,7 @@
 bool AuthDatabase::addUser(const QString &login, const QString &password, const QString &email) {
     QString hashedPassword = hashPassword(password);  // Хешируем пароль
 
-    qDebug() << "Hashed password before insertion:" << hashedPassword;  // Выводим хеш для проверки
+    qDebug() << "Hashed password before insertion:" << hashedPassword;
 
     QSqlQuery query;
     query.prepare(R"(
@@ -19,9 +19,23 @@ bool AuthDatabase::addUser(const QString &login, const QString &password, const 
         return false;
     }
 
-    qInfo() << "User added successfully:" << login;
+    QSqlQuery folderQuery;
+    folderQuery.prepare(R"(
+        INSERT INTO folders (name, user_login)
+        VALUES (:name, :login)
+    )");
+    folderQuery.bindValue(":name", "Главная");
+    folderQuery.bindValue(":login", login);
+
+    if (!folderQuery.exec()) {
+        qCritical() << "Failed to insert default folder:" << folderQuery.lastError().text();
+        return false;
+    }
+
+    qInfo() << "User and default folder added successfully:" << login;
     return true;
 }
+
 
 bool AuthDatabase::checkUserCredentials(const QString &login, const QString &password, const QString &email) {
     QString hashedPassword = hashPassword(password);  // Хешируем введенный пароль
