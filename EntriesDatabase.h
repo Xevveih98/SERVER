@@ -17,6 +17,9 @@ public:
     static QList<EntryUser> getUserEntries(const QString &login, int folderId, int year, int month);
     static QList<EntryUser> getUserEntriesByKeywords(const QString &login, const QStringList &keywords);
     static QList<EntryUser> getUserEntriesByTags(const QString &login, const QList<int> &tagIds);
+    static QList<EntryUser> getUserEntriesByDate(const QString &login, const QString &dateStr);
+    static bool deleteUserEntry(const QString &login, int entryId);
+    static bool updateUserEntry(const QString &login, const EntryUser &entry);
 
 
 private:

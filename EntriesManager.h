@@ -23,6 +23,9 @@ public:
     QHttpServerResponse handleGetUserEntries(const QHttpServerRequest &request);
     QHttpServerResponse handleSearchEntriesByKeywords(const QHttpServerRequest &request);
     QHttpServerResponse handleSearchEntriesByTags(const QHttpServerRequest &request);
+    QHttpServerResponse handleSearchEntriesByDate(const QHttpServerRequest &request);
+    QHttpServerResponse handleDeleteEntry(const QHttpServerRequest &request);
+    QHttpServerResponse handleUpdateEntry(const QHttpServerRequest &request);
 
 private:
 

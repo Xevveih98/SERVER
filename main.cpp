@@ -150,6 +150,19 @@ int main(int argc, char** argv)
                  [&entriesManager](const QHttpServerRequest &request) {
                      return entriesManager.handleSearchEntriesByTags(request);
                  });
+    server.route("/searchentriesbydate", QHttpServerRequest::Method::Post,
+                 [&entriesManager](const QHttpServerRequest &request) {
+                     return entriesManager.handleSearchEntriesByDate(request);
+                 });
+    server.route("/deleteentry", QHttpServerRequest::Method::Post,
+                 [&entriesManager](const QHttpServerRequest &request) {
+                     return entriesManager.handleDeleteEntry(request);
+                 });
+    server.route("/updateentry", QHttpServerRequest::Method::Post,
+                 [&entriesManager](const QHttpServerRequest &request) {
+                     return entriesManager.handleUpdateEntry(request);
+                 });
+
 
     startServer(server);
 

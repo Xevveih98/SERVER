@@ -48,9 +48,12 @@ QList<FoldersDatabase::FolderItem> FoldersDatabase::getUserFolders(const QString
 
     QSqlQuery query;
     query.prepare(R"(
-        SELECT id, name, itemcount FROM folders
-        WHERE user_login = :login
-        ORDER BY id ASC
+        SELECT f.id, f.name, COUNT(e.id) AS itemcount
+        FROM folders f
+        LEFT JOIN entries e ON f.id = e.entry_folder_id
+        WHERE f.user_login = :login
+        GROUP BY f.id, f.name
+        ORDER BY f.id ASC
     )");
     query.bindValue(":login", login);
 
@@ -63,16 +66,14 @@ QList<FoldersDatabase::FolderItem> FoldersDatabase::getUserFolders(const QString
             folders.append(folder);
         }
     } else {
-        qWarning() << "Failed to get user folders:" << query.lastError().text();
+        qWarning() << "Failed to get user folders with counts:" << query.lastError().text();
     }
 
     return folders;
 }
 
-
 bool FoldersDatabase::deleteFolder(const QString &login, const QString &folder)
 {
-    // Проверка количества папок у пользователя
     QSqlQuery countQuery;
     countQuery.prepare(R"(
         SELECT COUNT(*) FROM folders WHERE user_login = :login

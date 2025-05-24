@@ -249,9 +249,210 @@ QList<EntryUser> EntriesDatabase::getUserEntriesByTags(const QString &login, con
     return entries;
 }
 
+QList<EntryUser> EntriesDatabase::getUserEntriesByDate(const QString &login, const QString &dateStr)
+{
+    QList<EntryUser> entries;
+
+    if (login.isEmpty() || dateStr.isEmpty()) {
+        qWarning() << "Login or date is empty.";
+        return entries;
+    }
+
+    QString queryStr = R"(
+        SELECT e.id, e.entry_title, e.entry_content, e.entry_mood_id, e.entry_folder_id, e.entry_date, e.entry_time
+        FROM entries e
+        JOIN users u ON e.user_login = u.user_login
+        WHERE u.user_login = ?
+          AND e.entry_date = ?
+        ORDER BY e.id ASC
+    )";
+
+    QSqlQuery query;
+    if (!query.prepare(queryStr)) {
+        qWarning() << "Query prepare failed:" << query.lastError().text();
+        return entries;
+    }
+
+    query.addBindValue(login);
+    query.addBindValue(dateStr);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to get entries by date:" << query.lastError().text();
+        return entries;
+    }
+
+    while (query.next()) {
+        int entryId = query.value("id").toInt();
+        QString title = query.value("entry_title").toString();
+        QString content = query.value("entry_content").toString();
+        int moodId = query.value("entry_mood_id").toInt();
+        int folderId = query.value("entry_folder_id").toInt();
+        QDate date = query.value("entry_date").toDate();
+        QTime time = query.value("entry_time").toTime();
+
+        QVector<UserItem> tags = getTagsForEntry(entryId);
+        QVector<UserItem> activities = getActivitiesForEntry(entryId);
+        QVector<UserItem> emotions = getEmotionsForEntry(entryId);
+
+        EntryUser entry(entryId, login, title, content, moodId, folderId, date, time, tags, activities, emotions);
+        entries.append(entry);
+    }
+
+    return entries;
+}
+
+bool EntriesDatabase::deleteUserEntry(const QString &login, int entryId)
+{
+    QSqlDatabase::database().transaction();
+    QStringList relatedTables = {
+        "entry_tags",
+        "entry_user_activities",
+        "entry_user_emotions"
+    };
+
+    for (const QString &table : relatedTables) {
+        QSqlQuery deleteRel;
+        deleteRel.prepare(QString("DELETE FROM %1 WHERE entry_id = :entryId;").arg(table));
+        deleteRel.bindValue(":entryId", entryId);
+        if (!deleteRel.exec()) {
+            qWarning() << "Ошибка при удалении из " << table << ":" << deleteRel.lastError().text();
+            QSqlDatabase::database().rollback();
+            return false;
+        }
+    }
+    QSqlQuery deleteEntryQuery;
+    deleteEntryQuery.prepare(R"(
+        DELETE FROM entries WHERE id = :entryId AND user_login = :login;
+    )");
+    deleteEntryQuery.bindValue(":entryId", entryId);
+    deleteEntryQuery.bindValue(":login", login);
+
+    if (!deleteEntryQuery.exec()) {
+        qWarning() << "Ошибка при удалении записи:" << deleteEntryQuery.lastError().text();
+        QSqlDatabase::database().rollback();
+        return false;
+    }
+
+    QSqlDatabase::database().commit();
+    return true;
+}
 
 
+bool EntriesDatabase::updateUserEntry(const QString &login, const EntryUser &entry)
+{
+    if (entry.id <= 0) {
+        qWarning() << "Invalid entry id for update:" << entry.id;
+        return false;
+    }
 
+    QSqlDatabase db = QSqlDatabase::database();
+    QSqlQuery query(db);
+
+    int oldFolderId = -1;
+    query.prepare("SELECT entry_folder_id FROM entries WHERE id = :id AND user_login = :login");
+    query.bindValue(":id", entry.id);
+    query.bindValue(":login", login);
+
+    if (!query.exec() || !query.next()) {
+        qWarning() << "Не удалось получить старую папку для записи id:" << entry.id << query.lastError().text();
+        return false;
+    }
+    oldFolderId = query.value(0).toInt();
+
+    query.prepare(R"(
+        UPDATE entries
+        SET entry_title = :title,
+            entry_content = :content,
+            entry_mood_id = :moodId,
+            entry_date = :date,
+            entry_time = :time,
+            entry_folder_id = :folderId
+        WHERE id = :id AND user_login = :login
+    )");
+
+    query.bindValue(":title", entry.title);
+    query.bindValue(":content", entry.content);
+    query.bindValue(":moodId", entry.moodId);
+    query.bindValue(":folderId", entry.folderId);
+    query.bindValue(":date", entry.date);
+    query.bindValue(":time", entry.time);
+    query.bindValue(":id", entry.id);
+    query.bindValue(":login", login);
+
+    if (!query.exec()) {
+        qWarning() << "Ошибка при обновлении записи в entries:" << query.lastError().text();
+        return false;
+    }
+
+    // 3) Удаляем старые связи с тегами, активностями и эмоциями
+    auto deleteRelations = [&](const QString &tableName) -> bool {
+        QSqlQuery delQuery(db);
+        delQuery.prepare(QString("DELETE FROM %1 WHERE entry_id = :entryId").arg(tableName));
+        delQuery.bindValue(":entryId", entry.id);
+        if (!delQuery.exec()) {
+            qWarning() << "Ошибка при удалении связей в" << tableName << ":" << delQuery.lastError().text();
+            return false;
+        }
+        return true;
+    };
+
+    if (!deleteRelations("entry_tags")) return false;
+    if (!deleteRelations("entry_user_activities")) return false;
+    if (!deleteRelations("entry_user_emotions")) return false;
+
+    // 4) Вставляем новые связи
+    auto insertRelations = [&](const QString &tableName, const QString &columnName, const QVector<UserItem> &items) -> bool {
+        QSqlQuery insQuery(db);
+        QString sql = QString("INSERT INTO %1 (entry_id, %2) VALUES (:entryId, :itemId)").arg(tableName, columnName);
+        insQuery.prepare(sql);
+        for (const UserItem &item : items) {
+            if (item.id <= 0) {
+                qWarning() << "Пропущен недопустимый ID" << item.id << "для таблицы" << tableName;
+                continue;
+            }
+            insQuery.bindValue(":entryId", entry.id);
+            insQuery.bindValue(":itemId", item.id);
+            if (!insQuery.exec()) {
+                qWarning() << "Ошибка при вставке связи в" << tableName << ":" << insQuery.lastError().text();
+                return false;
+            }
+        }
+        return true;
+    };
+
+    if (!insertRelations("entry_tags", "tag_id", entry.tags)) return false;
+    if (!insertRelations("entry_user_activities", "user_activity_id", entry.activities)) return false;
+    if (!insertRelations("entry_user_emotions", "user_emotion_id", entry.emotions)) return false;
+    if (oldFolderId != entry.folderId && oldFolderId > 0 && entry.folderId > 0) {
+        QSqlQuery folderQuery(db);
+        folderQuery.prepare(R"(
+            UPDATE folders
+            SET itemcount = GREATEST(itemcount - 1, 0)
+            WHERE id = :oldFolderId
+        )");
+        folderQuery.bindValue(":oldFolderId", oldFolderId);
+        if (!folderQuery.exec()) {
+            qWarning() << "Ошибка при уменьшении itemcount в старой папке:" << folderQuery.lastError().text();
+            return false;
+        }
+
+        // Увеличиваем счетчик в новой папке
+        folderQuery.prepare(R"(
+            UPDATE folders
+            SET itemcount = itemcount + 1
+            WHERE id = :newFolderId
+        )");
+        folderQuery.bindValue(":newFolderId", entry.folderId);
+        if (!folderQuery.exec()) {
+            qWarning() << "Ошибка при увеличении itemcount в новой папке:" << folderQuery.lastError().text();
+            return false;
+        }
+    }
+
+    return true;
+}
+
+//--------- все остальное ----------
 
 QVector<UserItem> EntriesDatabase::getTagsForEntry(int entryId)
 {
