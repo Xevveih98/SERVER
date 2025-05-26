@@ -426,6 +426,49 @@ QHttpServerResponse EntriesManager::handleSearchEntriesByDate(const QHttpServerR
     return QHttpServerResponse("application/json", QJsonDocument(response).toJson());
 }
 
+QHttpServerResponse EntriesManager::handleSearchEntriesMoodIdies(const QHttpServerRequest &request)
+{
+    qDebug() << "[/handleSearchEntriesMoodIdies] Request received.";
+
+    if (request.method() != QHttpServerRequest::Method::Post) {
+        qWarning() << "Invalid method:" << request.method();
+        return QHttpServerResponse("Invalid method", QHttpServerResponse::StatusCode::MethodNotAllowed);
+    }
+
+    QJsonParseError parseError;
+    const QByteArray body = request.body();
+
+    const QJsonDocument doc = QJsonDocument::fromJson(body, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        qWarning() << "JSON parse error:" << parseError.errorString();
+        return QHttpServerResponse("Invalid JSON", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    QJsonObject obj = doc.object();
+    const QString login = obj.value("login").toString();
+    const QString dateStr = obj.value("date").toString();
+
+    if (login.isEmpty() || dateStr.isEmpty()) {
+        qWarning() << "Missing login or date. login:" << login << ", date:" << dateStr;
+        return QHttpServerResponse("Missing login or date", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    qDebug() << "Parsed date:" << dateStr;
+    QList<int> moodIds = EntriesDatabase::getLastMoodIdsByDate(login, dateStr);
+    qDebug() << "Mood IDs found:" << moodIds;
+
+    QJsonArray moodIdsArray;
+    for (int moodId : moodIds) {
+        moodIdsArray.append(moodId);
+    }
+
+    QJsonObject response;
+    response["moodIds"] = moodIdsArray;
+    response["date"] = dateStr;
+
+    return QHttpServerResponse("application/json", QJsonDocument(response).toJson());
+}
+
 QHttpServerResponse EntriesManager::handleDeleteEntry(const QHttpServerRequest &request)
 {
     qDebug() << "handleDeleteEntry вызван.";

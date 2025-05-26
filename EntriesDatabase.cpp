@@ -301,6 +301,55 @@ QList<EntryUser> EntriesDatabase::getUserEntriesByDate(const QString &login, con
     return entries;
 }
 
+QList<int> EntriesDatabase::getLastMoodIdsByDate(const QString &login, const QString &dateStr)
+{
+    QList<int> moodIds;
+
+    if (login.isEmpty() || dateStr.isEmpty()) {
+        qWarning() << "Login or date is empty.";
+        return moodIds;
+    }
+
+    QDate date = QDate::fromString(dateStr, "yyyy-MM-dd");
+    if (!date.isValid()) {
+        qWarning() << "Invalid date format:" << dateStr;
+        return moodIds;
+    }
+
+    QString queryStr = R"(
+        SELECT entry_mood_id
+        FROM entries
+        WHERE user_login = ? AND entry_date = ?
+        ORDER BY entry_time DESC
+        LIMIT 3
+    )";
+
+    QSqlQuery query;
+    if (!query.prepare(queryStr)) {
+        qWarning() << "Query prepare failed:" << query.lastError().text();
+        return moodIds;
+    }
+
+    query.addBindValue(login);
+    query.addBindValue(date.toString("yyyy-MM-dd"));
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query:" << query.lastError().text();
+        return moodIds;
+    }
+
+    while (query.next()) {
+        int moodId = query.value(0).toInt();
+        moodIds.append(moodId);
+    }
+
+    if (moodIds.isEmpty()) {
+        moodIds.append(0);
+    }
+
+    return moodIds;
+}
+
 bool EntriesDatabase::deleteUserEntry(const QString &login, int entryId)
 {
     QSqlDatabase::database().transaction();

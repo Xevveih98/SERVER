@@ -154,6 +154,10 @@ int main(int argc, char** argv)
                  [&entriesManager](const QHttpServerRequest &request) {
                      return entriesManager.handleSearchEntriesByDate(request);
                  });
+    server.route("/getmoodidies", QHttpServerRequest::Method::Post,
+                 [&entriesManager](const QHttpServerRequest &request) {
+                     return entriesManager.handleSearchEntriesMoodIdies(request);
+                 });
     server.route("/deleteentry", QHttpServerRequest::Method::Post,
                  [&entriesManager](const QHttpServerRequest &request) {
                      return entriesManager.handleDeleteEntry(request);

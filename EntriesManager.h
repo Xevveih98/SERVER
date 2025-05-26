@@ -26,6 +26,7 @@ public:
     QHttpServerResponse handleSearchEntriesByDate(const QHttpServerRequest &request);
     QHttpServerResponse handleDeleteEntry(const QHttpServerRequest &request);
     QHttpServerResponse handleUpdateEntry(const QHttpServerRequest &request);
+    QHttpServerResponse handleSearchEntriesMoodIdies(const QHttpServerRequest &request);
 
 private:
 
