@@ -428,7 +428,6 @@ QHttpServerResponse EntriesManager::handleSearchEntriesByDate(const QHttpServerR
 
 QHttpServerResponse EntriesManager::handleSearchEntriesMoodIdies(const QHttpServerRequest &request)
 {
-    qDebug() << "[/handleSearchEntriesMoodIdies] Request received.";
 
     if (request.method() != QHttpServerRequest::Method::Post) {
         qWarning() << "Invalid method:" << request.method();
@@ -453,9 +452,7 @@ QHttpServerResponse EntriesManager::handleSearchEntriesMoodIdies(const QHttpServ
         return QHttpServerResponse("Missing login or date", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    qDebug() << "Parsed date:" << dateStr;
     QList<int> moodIds = EntriesDatabase::getLastMoodIdsByDate(login, dateStr);
-    qDebug() << "Mood IDs found:" << moodIds;
 
     QJsonArray moodIdsArray;
     for (int moodId : moodIds) {

@@ -39,6 +39,10 @@ add_executable(PSQLSERVER
 
   EntriesDatabase.cpp
   EntriesDatabase.h
+  ComputeManager.cpp
+  ComputeManager.h
+  ComputeDatabase.cpp
+  ComputeDatabase.h
 )
 target_link_libraries(PSQLSERVER
   Qt6::Core

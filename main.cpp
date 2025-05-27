@@ -5,6 +5,7 @@
 #include "AuthManager.h"
 #include "FoldersManager.h"
 #include "CategoriesManager.h"
+#include "ComputeManager.h"
 
 void startServer(QHttpServer &server)
 {
@@ -41,6 +42,7 @@ int main(int argc, char** argv)
     FoldersManager foldersManager;
     CategoriesManager categoriesManager;
     EntriesManager entriesManager;
+    ComputeManager computeManager;
 
     server.route("/register", QHttpServerRequest::Method::Post,
                  [&authManager](const QHttpServerRequest &request) {
@@ -167,6 +169,10 @@ int main(int argc, char** argv)
                      return entriesManager.handleUpdateEntry(request);
                  });
 
+    server.route("/loadentriesbymonth", QHttpServerRequest::Method::Post,
+                 [&computeManager](const QHttpServerRequest &request) {
+                     return computeManager.handleLoadEntriesByMonth(request);
+                 });
 
     startServer(server);
 
