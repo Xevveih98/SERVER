@@ -56,6 +56,10 @@ int main(int argc, char** argv)
                  [&authManager](const QHttpServerRequest &request) {
                      return authManager.handlePasswordChange(request);
                  });
+    server.route("/recoverpassword", QHttpServerRequest::Method::Post,
+                 [&authManager](const QHttpServerRequest &request) {
+                     return authManager.handlePasswordRecover(request);
+                 });
     server.route("/deleteuser", QHttpServerRequest::Method::Post,
                  [&authManager](const QHttpServerRequest &request) {
                      return authManager.handleLoginToDelete(request);

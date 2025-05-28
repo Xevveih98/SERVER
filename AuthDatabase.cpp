@@ -106,6 +106,46 @@ QString AuthDatabase::changeUserPassword(const QString &login, const QString &ol
     return "ok";
 }
 
+std::pair<AuthDatabase::UserInfo, QString> AuthDatabase::recoverUserPasswordByEmail(const QString &email, const QString &newPassword)
+{
+    UserInfo userInfo;
+    QSqlQuery query;
+    query.prepare(R"(SELECT id, user_login FROM users WHERE user_email = :email)");
+    query.bindValue(":email", email);
+
+    if (!query.exec()) {
+        qCritical() << "Ошибка при поиске пользователя по email:" << query.lastError().text();
+        return {userInfo, "* Ошибка при поиске пользователя"};
+    }
+
+    if (!query.next()) {
+        return {userInfo, "* Пользователь с таким email не найден"};
+    }
+
+    int userId = query.value(0).toInt();
+    userInfo.login = query.value(1).toString();
+    userInfo.email = email;
+    userInfo.hashedPassword = hashPassword(newPassword);
+
+    QSqlQuery updateQuery;
+    updateQuery.prepare(R"(UPDATE users SET user_passhach = :newPassword WHERE id = :id)");
+    updateQuery.bindValue(":newPassword", userInfo.hashedPassword);
+    updateQuery.bindValue(":id", userId);
+
+    if (!updateQuery.exec()) {
+        qCritical() << "Ошибка при обновлении пароля:" << updateQuery.lastError().text();
+        return {userInfo, "* Ошибка при изменении пароля"};
+    }
+
+    if (updateQuery.numRowsAffected() == 0) {
+        return {userInfo, "* Пароль не обновлён"};
+    }
+
+    userInfo.isValid = true;
+    qInfo() << "Пароль успешно изменён для пользователя с email:" << email;
+    return {userInfo, "ok"};
+}
+
 bool AuthDatabase::changeUserEmail(const QString &login, const QString &email) {
 
     QSqlQuery query;

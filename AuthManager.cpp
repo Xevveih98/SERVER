@@ -117,6 +117,48 @@ QHttpServerResponse AuthManager::handlePasswordChange(const QHttpServerRequest &
     }
 }
 
+QHttpServerResponse AuthManager::handlePasswordRecover(const QHttpServerRequest &request)
+{
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(request.body(), &parseError);
+
+    if (parseError.error != QJsonParseError::NoError || !jsonDoc.isObject()) {
+        return QHttpServerResponse(
+            QJsonObject{{"status", "error"}, {"message", "Некорректный JSON"}},
+            QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    QJsonObject json = jsonDoc.object();
+    QString email = json.value("email").toString();
+    QString newPassword = json.value("newPassword").toString();
+
+    if (email.isEmpty() || newPassword.isEmpty()) {
+        return QHttpServerResponse(
+            QJsonObject{{"status", "error"}, {"message", "Заполните все поля"}},
+            QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    auto [userInfo, resultMessage] = AuthDatabase::recoverUserPasswordByEmail(email, newPassword);
+
+    if (resultMessage == "ok") {
+        QJsonObject response {
+            {"status", "ok"},
+            {"message", "Пароль успешно изменён"},
+            {"login", userInfo.login},
+            {"email", userInfo.email}
+        };
+        return QHttpServerResponse(response, QHttpServerResponse::StatusCode::Ok);
+    } else {
+        return QHttpServerResponse(
+            QJsonObject{
+                {"status", "error"},
+                {"message", resultMessage}
+            },
+            QHttpServerResponse::StatusCode::BadRequest);
+    }
+}
+
+
 
 QHttpServerResponse AuthManager::handleEmailChange(const QHttpServerRequest &request)
 {

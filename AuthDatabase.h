@@ -25,6 +25,7 @@ public:
     static RegisterResult addUser(const QString &login, const QString &password, const QString &email);
     static UserInfo getUserInfoByLogin(const QString &login);
     static QString changeUserPassword(const QString &lgoin, const QString &oldPassword, const QString &newPassword);
+    static std::pair<AuthDatabase::UserInfo, QString> recoverUserPasswordByEmail(const QString &email, const QString &newPassword);
     static bool changeUserEmail(const QString &login, const QString &email);
     static bool deleteUserByLogin(const QString &login);
 

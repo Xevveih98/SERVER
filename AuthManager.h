@@ -16,6 +16,7 @@ public:
     QHttpServerResponse handleRegister(const QHttpServerRequest &request);
     QHttpServerResponse handleLogin(const QHttpServerRequest &request);
     QHttpServerResponse handlePasswordChange(const QHttpServerRequest &request);
+    QHttpServerResponse handlePasswordRecover(const QHttpServerRequest &request);
     QHttpServerResponse handleEmailChange(const QHttpServerRequest &request);
     QHttpServerResponse handleLoginToDelete(const QHttpServerRequest &request);
 
