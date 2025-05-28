@@ -80,12 +80,12 @@ QString AuthDatabase::changeUserPassword(const QString &login, const QString &ol
 
     if (!query.exec() || !query.next()) {
         qWarning() << "User not found or query failed:" << query.lastError().text();
-        return "Пользователь не найден";
+        return "* Пользователь не найден";
     }
 
     QString storedHash = query.value(0).toString();
     if (storedHash != hashPassword(oldPassword)) {
-        return "Неверный пароль";
+        return "* Неверный пароль";
     }
 
     QString hashedNewPassword = hashPassword(newPassword);
@@ -95,11 +95,11 @@ QString AuthDatabase::changeUserPassword(const QString &login, const QString &ol
 
     if (!query.exec()) {
         qCritical() << "Failed to update password:" << query.lastError().text();
-        return "Ошибка при изменении пароля";
+        return "* Ошибка при изменении пароля";
     }
 
     if (query.numRowsAffected() == 0) {
-        return "Пароль не обновлён";
+        return "* Пароль не обновлён";
     }
 
     qInfo() << "Password successfully changed for" << login;
