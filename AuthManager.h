@@ -21,6 +21,7 @@ public:
 
 private:
     bool deleteUserFromDatabase(const QString &login);
+    static QString hashPassword(const QString &password);
 
 };
 

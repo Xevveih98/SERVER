@@ -1,10 +1,22 @@
 #include "AuthDatabase.h"
 
-bool AuthDatabase::addUser(const QString &login, const QString &password, const QString &email) {
-    QString hashedPassword = hashPassword(password);  // Хешируем пароль
+AuthDatabase::RegisterResult AuthDatabase::addUser(const QString &login, const QString &password, const QString &email) {
+    QString hashedPassword = hashPassword(password);
 
-    qDebug() << "Hashed password before insertion:" << hashedPassword;
+    QSqlQuery checkQuery;
+    checkQuery.prepare("SELECT COUNT(*) FROM users WHERE user_login = :login");
+    checkQuery.bindValue(":login", login);
+    if (!checkQuery.exec() || !checkQuery.next()) {
+        qCritical() << "Login check failed:" << checkQuery.lastError().text();
+        return RegisterResult::DatabaseError;
+    }
 
+    if (checkQuery.value(0).toInt() > 0) {
+        qInfo() << "Login already exists:" << login;
+        return RegisterResult::UserAlreadyExists;
+    }
+
+    // Добавление пользователя
     QSqlQuery query;
     query.prepare(R"(
         INSERT INTO users (user_login, user_email, user_passhach)
@@ -16,9 +28,10 @@ bool AuthDatabase::addUser(const QString &login, const QString &password, const 
 
     if (!query.exec()) {
         qCritical() << "Failed to insert user:" << query.lastError().text();
-        return false;
+        return RegisterResult::DatabaseError;
     }
 
+    // Добавление папки
     QSqlQuery folderQuery;
     folderQuery.prepare(R"(
         INSERT INTO folders (name, user_login)
@@ -29,57 +42,68 @@ bool AuthDatabase::addUser(const QString &login, const QString &password, const 
 
     if (!folderQuery.exec()) {
         qCritical() << "Failed to insert default folder:" << folderQuery.lastError().text();
-        return false;
+        return RegisterResult::DatabaseError;
     }
 
-    qInfo() << "User and default folder added successfully:" << login;
-    return true;
+    return RegisterResult::Success;
 }
 
-
-bool AuthDatabase::checkUserCredentials(const QString &login, const QString &password, const QString &email) {
-    QString hashedPassword = hashPassword(password);  // Хешируем введенный пароль
+AuthDatabase::UserInfo AuthDatabase::getUserInfoByLogin(const QString &login) {
+    UserInfo userInfo;
     QSqlQuery query;
     query.prepare(R"(
-        SELECT COUNT(*) FROM users
-        WHERE user_login = :login AND user_email = :email AND user_passhach = :password
+        SELECT user_login, user_passhach, user_email FROM users WHERE user_login = :login
     )");
     query.bindValue(":login", login);
-    query.bindValue(":email", email);
-    query.bindValue(":password", hashedPassword);
 
     if (!query.exec()) {
-        qCritical() << "Failed to check credentials:" << query.lastError().text();
-        return false;
+        qCritical() << "Failed to get user info:" << query.lastError().text();
+        return userInfo;
     }
 
     if (query.next()) {
-        int count = query.value(0).toInt();
-        return count > 0;
+        userInfo.login = query.value(0).toString();
+        userInfo.hashedPassword = query.value(1).toString();
+        userInfo.email = query.value(2).toString();
+        userInfo.isValid = true;
     }
 
-    return false;
+    return userInfo;
 }
 
-bool AuthDatabase::changeUserPassword(const QString &email, const QString &newPassword) {
-    QString hashedPassword = hashPassword(newPassword);  // Хешируем новый пароль
+
+QString AuthDatabase::changeUserPassword(const QString &login, const QString &oldPassword, const QString &newPassword)
+{
     QSqlQuery query;
-    query.prepare(R"(UPDATE users SET user_passhach = :password WHERE user_email = :email)");
-    query.bindValue(":password", hashedPassword);
-    query.bindValue(":email", email);
+    query.prepare(R"(SELECT user_passhach FROM users WHERE user_login = :login)");
+    query.bindValue(":login", login);
+
+    if (!query.exec() || !query.next()) {
+        qWarning() << "User not found or query failed:" << query.lastError().text();
+        return "Пользователь не найден";
+    }
+
+    QString storedHash = query.value(0).toString();
+    if (storedHash != hashPassword(oldPassword)) {
+        return "Неверный пароль";
+    }
+
+    QString hashedNewPassword = hashPassword(newPassword);
+    query.prepare(R"(UPDATE users SET user_passhach = :newPassword WHERE user_login = :login)");
+    query.bindValue(":newPassword", hashedNewPassword);
+    query.bindValue(":login", login);
 
     if (!query.exec()) {
-        qCritical() << "Failed to change password for" << email << ":" << query.lastError().text();
-        return false;
+        qCritical() << "Failed to update password:" << query.lastError().text();
+        return "Ошибка при изменении пароля";
     }
 
     if (query.numRowsAffected() == 0) {
-        qWarning() << "No user found with email:" << email;
-        return false;
+        return "Пароль не обновлён";
     }
 
-    qInfo() << "Password updated for user:" << email;
-    return true;
+    qInfo() << "Password successfully changed for" << login;
+    return "ok";
 }
 
 bool AuthDatabase::changeUserEmail(const QString &login, const QString &email) {
