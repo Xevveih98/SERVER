@@ -18,25 +18,23 @@ QHttpServerResponse CategoriesManager::handleSaveTags(const QHttpServerRequest &
 
     QJsonObject json = jsonDoc.object();
     QString login = json.value("login").toString();
-    QJsonArray tagsArray = json.value("tags").toArray();
+    QString tag = json.value("tag").toString().trimmed();
 
-    if (login.isEmpty() || tagsArray.isEmpty()) {
+    if (login.isEmpty() || tag.isEmpty()) {
         return QHttpServerResponse("Missing fields", QHttpServerResponse::StatusCode::BadRequest);
     }
 
-    QStringList tags;
-    for (const QJsonValue &val : tagsArray) {
-        if (val.isString()) {
-            tags << val.toString().trimmed();
-        }
-    }
+    QString errorMessage;
+    bool success = CategoriesDatabase::saveUserTag(login, tag, errorMessage);
 
-    if (CategoriesDatabase::saveUserTags(login, tags)) {
-        return QHttpServerResponse("Tags saved successfully", QHttpServerResponse::StatusCode::Ok);
+    if (success) {
+        return QHttpServerResponse("Tag saved successfully", QHttpServerResponse::StatusCode::Ok);
     } else {
-        return QHttpServerResponse("Failed to save tags", QHttpServerResponse::StatusCode::InternalServerError);
+        return QHttpServerResponse(errorMessage, QHttpServerResponse::StatusCode::BadRequest);
     }
 }
+
+
 
 QHttpServerResponse CategoriesManager::handleGetUserTags(const QHttpServerRequest &request)
 {

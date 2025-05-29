@@ -1,29 +1,39 @@
 #include "CategoriesDatabase.h"
 
-bool CategoriesDatabase::saveUserTags(const QString &login, const QStringList &tags)
+bool CategoriesDatabase::saveUserTag(const QString &login, const QString &tag, QString &errorMessage)
 {
-    // Удаляем старые теги пользователя
-    QSqlQuery deleteQuery;
-    deleteQuery.prepare(R"(DELETE FROM user_tags WHERE user_login = :login)");
-    deleteQuery.bindValue(":login", login);
-    if (!deleteQuery.exec()) {
-        qWarning() << "Failed to delete old user_tags:" << deleteQuery.lastError().text();
+    if (login.trimmed().isEmpty() || tag.trimmed().isEmpty()) {
+        errorMessage = "Login или тег не могут быть пустыми";
         return false;
     }
 
-    // Добавляем новые теги
-    for (const QString &tag : tags) {
-        QSqlQuery insertQuery;
-        insertQuery.prepare(R"(
-            INSERT INTO user_tags (name, user_login)
-            VALUES (:name, :login)
-            ON CONFLICT (user_login, name) DO NOTHING
-        )");
-        insertQuery.bindValue(":name", tag);
-        insertQuery.bindValue(":login", login.trimmed());
-        if (!insertQuery.exec()) {
-            qWarning() << "Failed to insert user tag:" << insertQuery.lastError().text();
-        }
+    QSqlQuery checkQuery;
+    checkQuery.prepare(R"(
+        SELECT 1 FROM user_tags WHERE user_login = :login AND name = :tag
+    )");
+    checkQuery.bindValue(":login", login.trimmed());
+    checkQuery.bindValue(":tag", tag.trimmed());
+
+    if (!checkQuery.exec()) {
+        errorMessage = "Ошибка проверки существующего тега: " + checkQuery.lastError().text();
+        return false;
+    }
+
+    if (checkQuery.next()) {
+        errorMessage = "* Такой тег уже существует";
+        return false;
+    }
+    QSqlQuery insertQuery;
+    insertQuery.prepare(R"(
+        INSERT INTO user_tags (name, user_login)
+        VALUES (:name, :login)
+    )");
+    insertQuery.bindValue(":name", tag.trimmed());
+    insertQuery.bindValue(":login", login.trimmed());
+
+    if (!insertQuery.exec()) {
+        errorMessage = "Ошибка вставки тега: " + insertQuery.lastError().text();
+        return false;
     }
 
     return true;

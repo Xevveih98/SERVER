@@ -17,7 +17,7 @@ public:
     };
 
 public:
-    static bool saveUserTags(const QString &login, const QStringList &tags);
+    static bool saveUserTag(const QString &login, const QString &tag, QString &errorMessage);
     static QList<UserItem> getUserTags(const QString &login);
     static bool deleteTag(const QString &login, const QString &tag);
 
