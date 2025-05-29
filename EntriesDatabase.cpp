@@ -189,65 +189,79 @@ QList<EntryUser> EntriesDatabase::getUserEntriesByKeywords(const QString &login,
     return entries;
 }
 
-QList<EntryUser> EntriesDatabase::getUserEntriesByTags(const QString &login, const QList<int> &tagIds)
+QList<EntryUser> EntriesDatabase::getUserEntriesByTags(const QString &login, const QList<int> &tagIds, const QList<int> &emotionIds, const QList<int> &activityIds)
 {
     QList<EntryUser> entries;
+    QSet<int> addedEntryIds;
 
-    if (tagIds.isEmpty()) {
-        qWarning() << "No tag IDs provided.";
+    if (tagIds.isEmpty() && emotionIds.isEmpty() && activityIds.isEmpty()) {
+        qWarning() << "Все списки пустые — нечего искать.";
         return entries;
     }
 
-    QStringList placeholders;
-    for (int i = 0; i < tagIds.size(); ++i) {
-        placeholders << "?";
-    }
+    auto makePlaceholders = [](int count) -> QString {
+        return QString("?, ").repeated(count).chopped(2);
+    };
 
-    QString queryStr = QString(R"(
-        SELECT DISTINCT e.id, e.entry_title, e.entry_content, e.entry_mood_id, e.entry_folder_id, e.entry_date, e.entry_time
-        FROM entries e
-        JOIN entry_tags et ON e.id = et.entry_id
-        JOIN users u ON e.user_login = u.user_login
-        WHERE u.user_login = ?
-          AND et.tag_id IN (%1)
-        ORDER BY e.id ASC
-    )").arg(placeholders.join(", "));
+    auto fetchEntries = [&](const QString& tableName, const QString& columnName, const QList<int>& ids) {
+        if (ids.isEmpty()) return;
 
-    QSqlQuery query;
-    if (!query.prepare(queryStr)) {
-        qWarning() << "Query prepare failed:" << query.lastError().text();
-        return entries;
-    }
+        QString placeholders = makePlaceholders(ids.size());
 
-    query.addBindValue(login);
-    for (int tagId : tagIds) {
-        query.addBindValue(tagId);
-    }
+        QString queryStr = QString(R"(
+            SELECT DISTINCT e.id, e.entry_title, e.entry_content, e.entry_mood_id,
+                            e.entry_folder_id, e.entry_date, e.entry_time
+            FROM entries e
+            JOIN %1 rel ON e.id = rel.entry_id
+            JOIN users u ON e.user_login = u.user_login
+            WHERE u.user_login = ?
+              AND rel.%2 IN (%3)
+        )").arg(tableName, columnName, placeholders);
 
-    if (!query.exec()) {
-        qWarning() << "Failed to get entries by tags:" << query.lastError().text();
-        return entries;
-    }
+        QSqlQuery query;
+        if (!query.prepare(queryStr)) {
+            qWarning() << "Ошибка подготовки запроса (" << tableName << "):" << query.lastError().text();
+            return;
+        }
 
-    while (query.next()) {
-        int entryId = query.value("id").toInt();
-        QString title = query.value("entry_title").toString();
-        QString content = query.value("entry_content").toString();
-        int moodId = query.value("entry_mood_id").toInt();
-        int folderId = query.value("entry_folder_id").toInt();
-        QDate date = query.value("entry_date").toDate();
-        QTime time = query.value("entry_time").toTime();
+        query.addBindValue(login);
+        for (int id : ids)
+            query.addBindValue(id);
 
-        QVector<UserItem> tags = getTagsForEntry(entryId);
-        QVector<UserItem> activities = getActivitiesForEntry(entryId);
-        QVector<UserItem> emotions = getEmotionsForEntry(entryId);
+        if (!query.exec()) {
+            qWarning() << "Ошибка выполнения запроса (" << tableName << "):" << query.lastError().text();
+            return;
+        }
 
-        EntryUser entry(entryId, login, title, content, moodId, folderId, date, time, tags, activities, emotions);
-        entries.append(entry);
-    }
+        while (query.next()) {
+            int entryId = query.value("id").toInt();
+            if (addedEntryIds.contains(entryId))
+                continue;
+
+            QString title = query.value("entry_title").toString();
+            QString content = query.value("entry_content").toString();
+            int moodId = query.value("entry_mood_id").toInt();
+            int folderId = query.value("entry_folder_id").toInt();
+            QDate date = query.value("entry_date").toDate();
+            QTime time = query.value("entry_time").toTime();
+
+            QVector<UserItem> tags = getTagsForEntry(entryId);
+            QVector<UserItem> activities = getActivitiesForEntry(entryId);
+            QVector<UserItem> emotions = getEmotionsForEntry(entryId);
+
+            EntryUser entry(entryId, login, title, content, moodId, folderId, date, time, tags, activities, emotions);
+            entries.append(entry);
+            addedEntryIds.insert(entryId);
+        }
+    };
+
+    fetchEntries("entry_tags", "tag_id", tagIds);
+    fetchEntries("entry_user_emotions", "user_emotion_id", emotionIds);
+    fetchEntries("entry_user_activities", "user_activity_id", activityIds);
 
     return entries;
 }
+
 
 QList<EntryUser> EntriesDatabase::getUserEntriesByDate(const QString &login, const QString &dateStr)
 {

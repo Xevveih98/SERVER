@@ -272,11 +272,13 @@ QHttpServerResponse EntriesManager::handleSearchEntriesByTags(const QHttpServerR
 
     QJsonObject obj = doc.object();
     const QString login = obj.value("login").toString();
-    const QJsonArray tagIdsJson = obj.value("tag_ids").toArray();
+    const QJsonArray tagIdsJson = obj.value("tagIds").toArray();
+    const QJsonArray emotionIdsJson = obj.value("emotionIds").toArray();
+    const QJsonArray activityIdsJson = obj.value("activityIds").toArray();
 
-    if (login.isEmpty() || tagIdsJson.isEmpty()) {
-        qWarning() << "Missing login or tag_ids. login:" << login << ", tag_ids:" << tagIdsJson;
-        return QHttpServerResponse("Missing login or tag_ids", QHttpServerResponse::StatusCode::BadRequest);
+    if (login.isEmpty()) {
+        qWarning() << "Missing login or tag_ids. login:" << login;
+        return QHttpServerResponse("Missing login or what", QHttpServerResponse::StatusCode::BadRequest);
     }
 
     QList<int> tagIds;
@@ -285,11 +287,25 @@ QHttpServerResponse EntriesManager::handleSearchEntriesByTags(const QHttpServerR
             tagIds.append(value.toInt());
         }
     }
+    QList<int> emotionIds;
+    for (const QJsonValue &value : emotionIdsJson) {
+        if (value.isDouble()) {
+            emotionIds.append(value.toInt());
+        }
+    }
+    QList<int> axtivityIds;
+    for (const QJsonValue &value : activityIdsJson) {
+        if (value.isDouble()) {
+            axtivityIds.append(value.toInt());
+        }
+    }
 
     qDebug() << "Parsed login:" << login;
     qDebug() << "Parsed tag IDs:" << tagIds;
+    qDebug() << "Parsed emotion IDs:" << emotionIds;
+    qDebug() << "Parsed activity IDs:" << axtivityIds;
 
-    QList<EntryUser> entries = EntriesDatabase::getUserEntriesByTags(login, tagIds);
+    QList<EntryUser> entries = EntriesDatabase::getUserEntriesByTags(login, tagIds, emotionIds, axtivityIds);
     qDebug() << "Found entries count:" << entries.size();
 
     QJsonArray entriesArray;
