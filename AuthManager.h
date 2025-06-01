@@ -18,6 +18,7 @@ public:
     QHttpServerResponse handlePasswordChange(const QHttpServerRequest &request);
     QHttpServerResponse handlePasswordRecover(const QHttpServerRequest &request);
     QHttpServerResponse handleEmailChange(const QHttpServerRequest &request);
+    QHttpServerResponse handleLoginChange(const QHttpServerRequest &request);
     QHttpServerResponse handleLoginToDelete(const QHttpServerRequest &request);
 
 private:

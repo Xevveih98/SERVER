@@ -198,6 +198,44 @@ QHttpServerResponse AuthManager::handleEmailChange(const QHttpServerRequest &req
     }
 }
 
+QHttpServerResponse AuthManager::handleLoginChange(const QHttpServerRequest &request)
+{
+    qDebug() << "Запрос на смену login вызван!";
+
+    QJsonParseError parseError;
+    const QJsonDocument jsonDoc = QJsonDocument::fromJson(request.body(), &parseError);
+
+    if (parseError.error != QJsonParseError::NoError || !jsonDoc.isObject()) {
+        qWarning() << "Invalid JSON in login change request:" << parseError.errorString();
+        return QHttpServerResponse("Неверный формат JSON", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    QJsonObject obj = jsonDoc.object();
+    QString login = obj.value("login").toString().trimmed();
+    QString newlogin = obj.value("newlogin").toString().trimmed();
+
+    if (login.isEmpty()) {
+        return QHttpServerResponse("Отсутствует логин", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    if (newlogin.isEmpty()) {
+        return QHttpServerResponse("Отсутствует newlogin", QHttpServerResponse::StatusCode::BadRequest);
+    }
+
+    bool changed = AuthDatabase::changeUserLogin(login, newlogin);
+    if (changed) {
+        qInfo() << "login успешно изменён для пользователя:" << newlogin;
+
+        QJsonObject responseObj;
+        responseObj["newlogin"] = newlogin;
+        return QHttpServerResponse("application/json", QJsonDocument(responseObj).toJson(),
+                                   QHttpServerResponse::StatusCode::Ok);
+    } else {
+        qWarning() << "Смена login не удалась для пользователя:" << login;
+        return QHttpServerResponse("Не удалось изменить login", QHttpServerResponse::StatusCode::InternalServerError);
+    }
+}
+
 
 QHttpServerResponse AuthManager::handleLoginToDelete(const QHttpServerRequest &request)
 {

@@ -27,6 +27,7 @@ public:
     static QString changeUserPassword(const QString &lgoin, const QString &oldPassword, const QString &newPassword);
     static std::pair<AuthDatabase::UserInfo, QString> recoverUserPasswordByEmail(const QString &email, const QString &newPassword);
     static bool changeUserEmail(const QString &login, const QString &email);
+    static bool changeUserLogin(const QString &login, const QString &newlogin);
     static bool deleteUserByLogin(const QString &login);
 
 private:

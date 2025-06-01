@@ -68,7 +68,10 @@ int main(int argc, char** argv)
                  [&authManager](const QHttpServerRequest &request) {
                      return authManager.handleEmailChange(request);
                  });
-
+    server.route("/changelogin", QHttpServerRequest::Method::Post,
+                 [&authManager](const QHttpServerRequest &request) {
+                     return authManager.handleLoginChange(request);
+                 });
 
     server.route("/savetags", QHttpServerRequest::Method::Post,
                  [&categoriesManager](const QHttpServerRequest &request) {

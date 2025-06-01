@@ -1,23 +1,32 @@
 #include "AuthDatabase.h"
+#include <qdatetime.h>
 
 AuthDatabase::RegisterResult AuthDatabase::addUser(const QString &login, const QString &password, const QString &email) {
-    QString hashedPassword = hashPassword(password);
-
-    QSqlQuery checkQuery;
-    checkQuery.prepare("SELECT COUNT(*) FROM users WHERE user_login = :login");
-    checkQuery.bindValue(":login", login);
-    if (!checkQuery.exec() || !checkQuery.next()) {
-        qCritical() << "Login check failed:" << checkQuery.lastError().text();
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.transaction()) {
+        qCritical() << "Failed to start transaction:" << db.lastError().text();
         return RegisterResult::DatabaseError;
     }
 
-    if (checkQuery.value(0).toInt() > 0) {
+    QString hashedPassword = hashPassword(password);
+    QSqlQuery query;
+
+    // Проверка существования пользователя
+    query.prepare("SELECT COUNT(*) FROM users WHERE user_login = :login");
+    query.bindValue(":login", login);
+    if (!query.exec() || !query.next()) {
+        qCritical() << "Login check failed:" << query.lastError().text();
+        db.rollback();
+        return RegisterResult::DatabaseError;
+    }
+
+    if (query.value(0).toInt() > 0) {
         qInfo() << "Login already exists:" << login;
+        db.rollback();
         return RegisterResult::UserAlreadyExists;
     }
 
     // Добавление пользователя
-    QSqlQuery query;
     query.prepare(R"(
         INSERT INTO users (user_login, user_email, user_passhach)
         VALUES (:login, :email, :password)
@@ -28,25 +37,162 @@ AuthDatabase::RegisterResult AuthDatabase::addUser(const QString &login, const Q
 
     if (!query.exec()) {
         qCritical() << "Failed to insert user:" << query.lastError().text();
+        db.rollback();
         return RegisterResult::DatabaseError;
     }
 
     // Добавление папки
-    QSqlQuery folderQuery;
-    folderQuery.prepare(R"(
+    query.prepare(R"(
         INSERT INTO folders (name, user_login)
         VALUES (:name, :login)
+        RETURNING id
     )");
-    folderQuery.bindValue(":name", "Главная");
-    folderQuery.bindValue(":login", login);
+    query.bindValue(":name", "Главная");
+    query.bindValue(":login", login);
 
-    if (!folderQuery.exec()) {
-        qCritical() << "Failed to insert default folder:" << folderQuery.lastError().text();
+    if (!query.exec() || !query.next()) {
+        qCritical() << "Failed to insert default folder:" << query.lastError().text();
+        db.rollback();
+        return RegisterResult::DatabaseError;
+    }
+
+    int folderId = query.value(0).toInt();
+
+    // Добавление первой записи
+    QDate currentDate = QDate::currentDate();
+    QTime currentTime = QTime::currentTime();
+
+    query.prepare(R"(
+        INSERT INTO entries (
+            user_login,
+            entry_title,
+            entry_content,
+            entry_mood_id,
+            entry_folder_id,
+            entry_date,
+            entry_time
+        ) VALUES (
+            :login,
+            :title,
+            :content,
+            :mood_id,
+            :folder_id,
+            :date,
+            :time
+        )
+    )");
+
+    query.bindValue(":login", login);
+    query.bindValue(":title", "Моя первая запись");
+    query.bindValue(":content",
+                    "Это мой первый день в Дневнике Эмоций! Сегодня всё кажется новым и немного волнующим, "
+                    "но в то же время очень тёплым и уютным. Я начинаю своё путешествие по миру чувств — "
+                    "готов(а) замечать маленькие радости и учиться лучше понимать себя. Пусть этот дневник "
+                    "станет местом, где я смогу хранить свои мысли, настроение и важные моменты. Вперёд к новым открытиям!");
+    query.bindValue(":mood_id", 1);
+    query.bindValue(":folder_id", folderId);
+    query.bindValue(":date", currentDate);
+    query.bindValue(":time", currentTime);
+
+    if (!query.exec()) {
+        qCritical() << "Failed to insert first entry:" << query.lastError().text();
+        db.rollback();
+        return RegisterResult::DatabaseError;
+    }
+
+    // Добавление задач
+    QStringList todoTasks = {
+        "Ознакомиться с пунктом меню \"Настройки\"",
+        "Добавить свои события, впечатления и теги"
+    };
+
+    query.prepare(R"(
+        INSERT INTO user_todo (user_login, name)
+        VALUES (:login, :name)
+    )");
+
+    for (const auto& task : todoTasks) {
+        query.bindValue(":login", login);
+        query.bindValue(":name", task);
+        if (!query.exec()) {
+            qCritical() << "Failed to insert todo task:" << query.lastError().text();
+            db.rollback();
+            return RegisterResult::DatabaseError;
+        }
+    }
+
+    // Добавление активностей
+    QVector<QPair<int, QString>> activities = {
+        {12, "моё первое событие"}
+    };
+
+    query.prepare(R"(
+        INSERT INTO user_activities (user_login, icon_id, icon_label)
+        VALUES (:login, :icon_id, :icon_label)
+    )");
+
+    for (const auto& activity : activities) {
+        query.bindValue(":login", login);
+        query.bindValue(":icon_id", activity.first);
+        query.bindValue(":icon_label", activity.second);
+        if (!query.exec()) {
+            qCritical() << "Failed to insert activity:" << query.lastError().text();
+            db.rollback();
+            return RegisterResult::DatabaseError;
+        }
+    }
+
+    // Добавление эмоций
+    QVector<QPair<int, QString>> emotions = {
+        {13, "моя вторая эмоция"},
+        {14, "моя первая эмоция"}
+    };
+
+    query.prepare(R"(
+        INSERT INTO user_emotions (user_login, icon_id, icon_label)
+        VALUES (:login, :icon_id, :icon_label)
+    )");
+
+    for (const auto& emotion : emotions) {
+        query.bindValue(":login", login);
+        query.bindValue(":icon_id", emotion.first);
+        query.bindValue(":icon_label", emotion.second);
+        if (!query.exec()) {
+            qCritical() << "Failed to insert emotion:" << query.lastError().text();
+            db.rollback();
+            return RegisterResult::DatabaseError;
+        }
+    }
+
+    // Добавление тегов
+    QVector<QString> tags = {
+        {"мой_первый_тег"}
+    };
+
+    query.prepare(R"(
+        INSERT INTO user_tags (user_login, name)
+        VALUES (:login, :name)
+    )");
+
+    for (const auto& tag : tags) {
+        query.bindValue(":login", login);
+        query.bindValue(":name", tag);
+        if (!query.exec()) {
+            qCritical() << "Failed to insert tag:" << query.lastError().text();
+            db.rollback();
+            return RegisterResult::DatabaseError;
+        }
+    }
+
+    if (!db.commit()) {
+        qCritical() << "Failed to commit transaction:" << db.lastError().text();
+        db.rollback();
         return RegisterResult::DatabaseError;
     }
 
     return RegisterResult::Success;
 }
+
 
 AuthDatabase::UserInfo AuthDatabase::getUserInfoByLogin(const QString &login) {
     UserInfo userInfo;
@@ -166,6 +312,27 @@ bool AuthDatabase::changeUserEmail(const QString &login, const QString &email) {
     qInfo() << "Email updated for user:" << login;
     return true;
 }
+
+bool AuthDatabase::changeUserLogin(const QString &login, const QString &newlogin) {
+
+    QSqlQuery query;
+    query.prepare(R"(UPDATE users SET user_login = :newlogin WHERE user_login = :login)");
+    query.bindValue(":newlogin", newlogin);
+    query.bindValue(":login", login);
+
+    if (!query.exec()) {
+        qCritical() << "Failed to change login for" << login << ":" << query.lastError().text();
+        return false;
+    }
+
+    if (query.numRowsAffected() == 0) {
+        qWarning() << "No user found with login:" << login;
+        return false;
+    }
+
+    return true;
+}
+
 
 bool AuthDatabase::deleteUserByLogin(const QString &login)
 {
